@@ -9,3 +9,4 @@
 .DS_Store
 .Trash
 *.sublime-workspace
+.ruby-version
