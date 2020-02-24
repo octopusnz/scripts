@@ -5,8 +5,8 @@
 /doc/
 /pkg/
 /spec/reports/
+/spec/examples.txt
 /tmp/
 .DS_Store
 .Trash
 *.sublime-workspace
-.ruby-version
