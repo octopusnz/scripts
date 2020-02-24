@@ -111,20 +111,7 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
+
+# Here be Rbenv!
 export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
