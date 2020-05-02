@@ -112,6 +112,22 @@ if ! shopt -oq posix; then
   fi
 fi
 
-# Here be Rbenv!
+# Ruby PATH
 export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
+
+# Rust PATH
+export PATH="$HOME/.cargo/bin:$PATH"
+
+
+
+
+
+
+
+
+
+
+
+
+
