@@ -14,6 +14,9 @@ require: 'rubocop-performance'
 Style/EmptyMethod:
   EnforcedStyle: 'expanded'
 
+Style/ExponentialNotation:
+  Enabled: true   
+
 Style/HashEachMethods: 
   Enabled: true  
 
@@ -22,3 +25,12 @@ Style/HashTransformKeys:
 
 Style/HashTransformValues:
   Enabled: true
+
+Layout/SpaceAroundMethodCallOperator:
+  Enabled: true
+
+Lint/RaiseException:
+  Enabled: true
+
+Lint/StructNewOverride:
+  Enabled: true    
