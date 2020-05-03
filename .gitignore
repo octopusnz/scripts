@@ -8,5 +8,8 @@
 /spec/examples.txt
 /tmp/
 .DS_Store
+.Gemfile.lock
 .Trash
+.ruby-version
 *.sublime-workspace
+*.sublime-project

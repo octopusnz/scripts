@@ -1,0 +1,13 @@
+# Manually configure a good resolution for the monitor.
+# CVT output: 
+# 1920x1080 59.96 Hz (CVT 2.07M9) hsync: 67.16 kHz; pclk: 173.00 MHz
+# Modeline "1920x1080_60.00"  173.00  1920 2048 2248 2576  1080 1083 1088 1120 -hsync +vsync
+
+xrandr --newmode "1920x1080_60.00"  173.00  1920 2048 2248 2576  1080 1083 1088 1120 -hsync +vsync
+xrandr --addmode Virtual1 1920x1080_60.00
+
+# Pull in the .profile (which then pulls in .bashrc) for completeness
+
+if [ -f "$HOME/.profile" ]; then
+	. "$HOME/.profile"
+    fi
