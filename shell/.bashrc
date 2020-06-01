@@ -119,5 +119,16 @@ eval "$(rbenv init -)"
 # Rust PATH
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Sublime Aliases
-alias {subli,sublim,sublime}='/bin/subl'
+# Ruby tooling aliases
+alias reek="bundle exec reek"
+alias {rs,rspec}="bundle exec rspec"
+alias rubocop="bundle exec rubocop"
+
+# Sublime alias
+alias {subli,sublim,sublime,sublm}="subl"
+
+# Sudo alias
+# If the last character of the alias value is a space or tab character, 
+# then the next command word following the alias is also checked for alias expansion. 
+# i.e 'sudo aliasname' should now work
+alias sudo="sudo "
