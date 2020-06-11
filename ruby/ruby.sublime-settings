@@ -1,0 +1,15 @@
+// These settings override both User and Default settings for the Ruby syntax
+{
+  "default_encoding": "UTF-8",
+  "default_line_ending": "unix",
+  "detect_indentation": false,	
+  "ensure_newline_at_eof_on_save": true,
+  "rulers":
+    [
+      80
+    ],
+  "tab_size": 2,
+  "translate_tabs_to_spaces": true,
+  "trim_trailing_white_space_on_save": true,
+  "word_wrap": "true"
+}

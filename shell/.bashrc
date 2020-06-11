@@ -125,7 +125,7 @@ alias {rs,rspec}="bundle exec rspec"
 alias rubocop="bundle exec rubocop"
 
 # Sublime alias
-alias {subli,sublim,sublime,sublm}="subl"
+alias {subli,sublm,sublim,sublime}="subl"
 
 # Sudo alias
 # If the last character of the alias value is a space or tab character, 

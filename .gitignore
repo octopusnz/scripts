@@ -11,4 +11,5 @@
 .Gemfile.lock
 .Trash
 .ruby-version
-*.sublime-*
+*.sublime-project
+*.sublime-workspace
