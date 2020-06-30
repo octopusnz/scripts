@@ -23,7 +23,8 @@ GRUB_CMDLINE_LINUX=""
 
 # You need to set this first on the Host OS, using VBoxManage to make it 
 # available to Grub
-# i.e VBoxManage setextradata "name of guest" "CustomVideoMode1" "widthxheightxdepth"
+# i.e VBoxManage setextradata "name of guest" "CustomVideoMode1" 
+# "widthxheightxdepth"
 # Like this: setextradata "Debian 10" "CustomVideoMode1" "1920x1080x32"
 
 GRUB_GFXMODE=1920x1080x32
