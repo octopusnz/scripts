@@ -17,7 +17,7 @@ ruby_projects_dir="${HOME}/ruby/"
 # Some arrays we will use later
 
 all_dir=("${git_dir}" "${lock_file_dir}" "${rbenv_dir}" "${ruby_build_dir}"
-  "${ruby_projects_dir}")
+"${ruby_projects_dir}")
 git_test=("${git_dir}"*/)
 git_array=()
 ruby_test=("${ruby_projects_dir}"*/)
@@ -74,7 +74,7 @@ startup(){
 
 	for many_dir in "${git_test[@]}"; do
 		git -C "${many_dir}" rev-parse > /dev/null 2>&1 &&
-			git_array+=("${many_dir}") && echo "${many_dir} ready"
+		git_array+=("${many_dir}") && echo "${many_dir} ready"
 	done
 
 	echo ""
@@ -82,7 +82,7 @@ startup(){
 
 	for ruby_dir in "${ruby_test[@]}"; do
 	  find "${ruby_dir}" -name "Gemfile.lock" > /dev/null 2>&1 &&
-      ruby_array+=("${ruby_dir}") && echo "${ruby_dir} ready"
+    ruby_array+=("${ruby_dir}") && echo "${ruby_dir} ready"
 	done
 }
 
@@ -92,11 +92,11 @@ updates(){
 
 	echo "Updating rbenv"
 	git -C "${rbenv_dir}" rev-parse > /dev/null 2>&1 &&
-		git --git-dir=/"${rbenv_dir}"/.git/ pull
+	git --git-dir=/"${rbenv_dir}"/.git/ pull
 
 	echo "Updating ruby-build"
 	git -C "${ruby_build_dir}" rev-parse > /dev/null 2>&1 &&
-		git --git-dir=/"${ruby_build_dir}"/.git/ pull
+	git --git-dir=/"${ruby_build_dir}"/.git/ pull
 
 	for dir_test in "${git_array[@]}"; do
 		echo "Updating ${dir_test}"
@@ -105,12 +105,17 @@ updates(){
 
   for ruby_folders in "${ruby_array[@]}"; do
     echo ""
-    echo "Updating ${ruby_folders}" && cd "${ruby_folders}" && bundle update
+    echo "Updating ${ruby_folders}" &&
+    export BUNDLE_GEMFILE="${ruby_folders}"/Gemfile && bundle update
   done
 
 	echo ""
-  echo "Updating Rust"
+  echo "Updating Rust and Cargo"
 	rustup update
+
+  echo ""
+  echo "Updating Cabal packages"
+  cabal update
 }
 
 endtimes(){
