@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# updateotron
+# This script automates several update tasks.
+
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -28,10 +31,24 @@ ruby_array=()
 cleanup(){
   echo ""
   echo "5. Cleaning up and exiting."
+
+  if [[ ! -f "${lock_file_dir}"/updateotron.lock ]]; then
+    echo "[ERROR 4]: Lock file does not exist."
+    exit 4
+  else
+    echo "[MSG]: Removing lock file."
+    rm "${lock_file_dir}"/updateotron.lock
+  fi
+
   echo "[MSG]: Unsetting variables".
-  unset all_dir check_dir dir dir_test git_dir git_array git_test many_dir
-  unset rbenv_dir ruby_array ruby_build_dir ruby_projects_dir
+  unset git_dir lock_file_dir rbenv_dir ruby_build_dir ruby_projects_dir
+  unset all_dir git_test git_array ruby_test ruby_array many_dir ruby_dir
+  unset ruby_folders BUNDLE_GEMFILE
+
+  return 0
 }
+
+trap cleanup ERR EXIT SIGINT SIGTERM
 
 # The following exit codes are specified.
 # When adding new ones take into account:
@@ -42,9 +59,9 @@ cleanup(){
 # Exit 2 - Reserved for system.
 # Exit 3 - Lock file exists.
 #	The script creates a file called updateotron.lock and checks for its
-# 	existence to prevent the script running multiple times.
+# existence to prevent the script running multiple times.
 # Exit 4 - Lock file does not exist.
-# 	At the end of the script when running cleanup we check for the lock
+# At the end of the script when running cleanup we check for the lock
 #	file before running rm. Where did it go?
 
 startup(){
@@ -52,8 +69,8 @@ startup(){
 	echo "Doing some setup."
 
 	if [[ -f "${lock_file_dir}"/updateotron.lock ]]; then
-			echo "[ERROR 3]: Lock file exists."
-			exit 3
+	  echo "[ERROR 3]: Lock file exists."
+	  exit 3
 	fi
 
 	echo "[MSG]: Creating lock file."
@@ -84,6 +101,8 @@ startup(){
 	  find "${ruby_dir}" -name "Gemfile.lock" > /dev/null 2>&1 &&
     ruby_array+=("${ruby_dir}") && echo "${ruby_dir} ready"
 	done
+
+  return 0
 }
 
 updates(){
@@ -116,21 +135,11 @@ updates(){
   echo ""
   echo "Updating Cabal packages"
   cabal update
-}
 
-endtimes(){
-
-  if [[ ! -f "${lock_file_dir}"/updateotron.lock ]]; then
-	  echo "[ERROR 4]: Lock file does not exist."
-	  exit 4
-	else
-	  echo "[MSG]: Removing lock file."
-	  rm "${lock_file_dir}"/updateotron.lock
-	  exit 0
-	fi
+  return 0
 }
 
 startup
 updates
-cleanup
-endtimes
+
+exit 0
