@@ -65,62 +65,62 @@ trap cleanup ERR EXIT SIGINT SIGTERM
 #	file before running rm. Where did it go?
 
 startup(){
-	echo "Welcome to the update script."
-	echo "Doing some setup."
+  echo "Welcome to the update script."
+  echo "Doing some setup."
 
-	if [[ -f "${lock_file_dir}"/updateotron.lock ]]; then
-	  echo "[ERROR 3]: Lock file exists."
-	  exit 3
-	fi
+  if [[ -f "${lock_file_dir}"/updateotron.lock ]]; then
+    echo "[ERROR 3]: Lock file exists."
+    exit 3
+  fi
 
-	echo "[MSG]: Creating lock file."
-	touch "${lock_file_dir}"/updateotron.lock
-	echo ""
-	echo "1. Checking that directories exist."
+  echo "[MSG]: Creating lock file."
+  touch "${lock_file_dir}"/updateotron.lock
+  echo ""
+  echo "1. Checking that directories exist."
 
-	for dir in "${all_dir[@]}"; do
-		if [[ ! -d "${dir}" ]]; then
+  for dir in "${all_dir[@]}"; do
+    if [[ ! -d "${dir}" ]]; then
       echo "[WARNING]: Directory ${dir} does not exist."
     else
       echo "${dir} OK"
     fi;
-	done
+  done
 
-	echo ""
-	echo "2. Checking which source directories are git repositories."
+  echo ""
+  echo "2. Checking which source directories are git repositories."
 
-	for many_dir in "${git_test[@]}"; do
-		git -C "${many_dir}" rev-parse > /dev/null 2>&1 &&
-		git_array+=("${many_dir}") && echo "${many_dir} ready"
-	done
+  for many_dir in "${git_test[@]}"; do
+    git -C "${many_dir}" rev-parse > /dev/null 2>&1 &&
+    git_array+=("${many_dir}") && echo "${many_dir} ready"
+  done
 
-	echo ""
-	echo "3. Checking for ruby projects that need a bundle."
+  echo ""
+  echo "3. Checking for ruby projects that need a bundle."
 
-	for ruby_dir in "${ruby_test[@]}"; do
-	  find "${ruby_dir}" -name "Gemfile.lock" > /dev/null 2>&1 &&
+  for ruby_dir in "${ruby_test[@]}"; do
+    find "${ruby_dir}" -name "Gemfile.lock" > /dev/null 2>&1 &&
     ruby_array+=("${ruby_dir}") && echo "${ruby_dir} ready"
-	done
+  done
 
   return 0
 }
 
 updates(){
-	echo ""
-	echo "4. Let's try some updates."
+  echo ""
+  echo "4. Let's try some updates."
 
-	echo "Updating rbenv"
-	git -C "${rbenv_dir}" rev-parse > /dev/null 2>&1 &&
-	git --git-dir=/"${rbenv_dir}"/.git/ pull
+  echo "Updating rbenv"
+  git -C "${rbenv_dir}" rev-parse > /dev/null 2>&1 &&
+  git --git-dir=/"${rbenv_dir}"/.git/ pull
 
-	echo "Updating ruby-build"
-	git -C "${ruby_build_dir}" rev-parse > /dev/null 2>&1 &&
-	git --git-dir=/"${ruby_build_dir}"/.git/ pull
+  echo "Updating ruby-build"
+  git -C "${ruby_build_dir}" rev-parse > /dev/null 2>&1 &&
+  git --git-dir=/"${ruby_build_dir}"/.git/ pull
 
-	for dir_test in "${git_array[@]}"; do
-		echo "Updating ${dir_test}"
-		git --git-dir=/"${dir_test}"/.git/ pull
-	done
+  for dir_test in "${git_array[@]}"; do
+    echo "Updating ${dir_test}"
+    git --git-dir=/"${dir_test}"/.git/ pull
+  done
 
   for ruby_folders in "${ruby_array[@]}"; do
     echo ""
@@ -128,9 +128,9 @@ updates(){
     export BUNDLE_GEMFILE="${ruby_folders}"/Gemfile && bundle update
   done
 
-	echo ""
+  echo ""
   echo "Updating Rust and Cargo"
-	rustup update
+  rustup update
 
   echo ""
   echo "Updating Cabal packages"
