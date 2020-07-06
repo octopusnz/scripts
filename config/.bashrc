@@ -112,23 +112,12 @@ if ! shopt -oq posix; then
   fi
 fi
 
+# Cabal PATH
+export PATH="$HOME/.cabal/bin:$PATH"
+
 # Ruby PATH
 export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
 
 # Rust PATH
 export PATH="$HOME/.cargo/bin:$PATH"
-
-# Ruby tooling aliases
-alias reek="bundle exec reek"
-alias {rs,rspec}="bundle exec rspec"
-alias rubocop="bundle exec rubocop"
-
-# Sublime alias
-alias {subli,sublm,sublim,sublime}="subl"
-
-# Sudo alias
-# If the last character of the alias value is a space or tab character, 
-# then the next command word following the alias is also checked for alias expansion. 
-# i.e 'sudo aliasname' should now work
-alias sudo="sudo "
