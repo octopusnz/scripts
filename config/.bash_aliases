@@ -12,7 +12,7 @@ alias sc="shellcheck"
 alias {subli,sublm,sublim,sublime}="subl"
 
 # Sudo alias
-# If the last character of the alias value is a space or tab character,
-# then the next command word following the alias is also checked for alias expansion.
+# If the last character of the alias value is a space or tab character, then # the next command word following the alias is also checked for alias
+# expansion.
 # i.e 'sudo aliasname' should now work
 alias sudo="sudo "

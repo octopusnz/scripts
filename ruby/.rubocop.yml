@@ -14,7 +14,7 @@ require:
   - rubocop-rspec
 
 AllCops:
-  TargetRubyVersion: 2.5
+  TargetRubyVersion: 2.7
 
 Layout/EmptyLinesAroundAttributeAccessor:
   Enabled: true
@@ -34,6 +34,36 @@ Lint/RaiseException:
 Lint/StructNewOverride:
   Enabled: true    
 
+Performance/AncestorsInclude:
+  Enabled: true
+
+Performance/BigDecimalWithNumericArgument:
+  Enabled: true
+
+Performance/RedundantSortBlock:
+  Enabled: true
+
+Performance/RedundantStringChars:
+  Enabled: true
+
+Performance/ReverseFirst:
+  Enabled: true
+
+Performance/SortReverse:
+  Enabled: true
+
+Performance/Squeeze:
+  Enabled: true
+
+Performance/StringInclude:
+  Enabled: true
+
+Style/AccessorGrouping:
+  Enabled: true   
+
+Style/BisectedAttrAccessor:
+  Enabled: true   
+
 Style/EmptyMethod:
   EnforcedStyle: 'expanded'
 
@@ -47,6 +77,9 @@ Style/HashTransformKeys:
   Enabled: true 
 
 Style/HashTransformValues:
+  Enabled: true
+
+Style/RedundantAssignment:
   Enabled: true
 
 Style/RedundantFetchBlock:
