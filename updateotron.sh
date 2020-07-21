@@ -35,13 +35,10 @@ command_array=(
 
   bundle
   cabal
-  echo
-  grep
   gem
   git
   rbenv
   rustup
-  touch
 )
 
 # The following exit codes are specified.
@@ -112,6 +109,20 @@ cleanup(){
 }
 
 trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
+
+# TODO
+#
+# Need to expand regex to include list of Ruby releases here:
+# https://www.ruby-lang.org/en/downloads/releases/
+# Namely add x.x.x-words style to regex. Will then need to update sanitize
+# logic as well.
+#
+# Have to continue to catch sanitize scenarios.
+# An example issue is a .ruby-version file like so:
+# 2.0.0
+# 2.1.1
+# This will currently smash the numbers together like:
+# '2.0.02.1.1' and make that the ruby version.
 
 sanitize(){
 
