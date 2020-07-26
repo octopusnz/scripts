@@ -5,19 +5,23 @@
 
 # TODO
 #
-# Need to expand regex to include list of Ruby releases here:
-# https://www.ruby-lang.org/en/downloads/releases/
-# Namely add x.x.x-words style to regex. Will then need to update sanitize
-# logic as well.
-#
-# Consider moving the sanitize funtion to part of the startup and
+# Consider moving the sanitize function to part of the startup and
 # so we remove ruby projects from the update array if there is a badly
 # formatted .ruby-version file. If there is no file it should be safe(er)
 # to use the default.
 #
-# Consider checking for commands and just marking them as inactive somehow
-# so they're not run but proceeding with the rest of the script. Rather than
-# erroring out if one command is missing/fails.
+# Keep working on rbv_reg regex in the sanitize() function.
+#
+# Try to get the downcase and param expansion in sanitize() function
+# combined into one.
+#
+# Consider checking for the .ruby-version in the home dir and the same order
+# that ruby itself checks for those files to determine default version.
+# Maybe start with if one exists in same dir as script and go from there.
+# Is this just duplicating what rbenv/ruby itself is doing tho?
+#
+# Do we need to eval rbenv ... ? What a time to be alive.
+#
 
 set -o errexit
 set -o nounset
@@ -34,7 +38,8 @@ git_dir="${HOME}/sources/compile"
 lock_file_dir="/tmp"
 rbenv_dir="${HOME}/.rbenv"
 ruby_build_dir="${HOME}/.rbenv/plugins/ruby-build"
-ruby_projects_dir="${HOME}/ruby"
+ruby_projects_dir="${HOME}/code/ruby"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 # Some arrays we will use later
 
@@ -45,17 +50,11 @@ all_dir=(
   "${rbenv_dir}"
   "${ruby_build_dir}"
   "${ruby_projects_dir}"
+  "${script_dir}"
 )
 
-command_array=(
-
-  bundle
-  cabal
-  gem
-  git
-  rbenv
-  rustup
-)
+mandatory_commands=(bundle gem git rbenv)
+optional_commands=(cabal rustup)
 
 # The following exit codes are specified.
 # When adding new ones take into account:
@@ -87,12 +86,14 @@ command_array=(
 # We expect the directories specified at the beginning of this file and in
 # $all_dir() array to exist.
 #
-# Exit 7 - We call a function named sanitize() in two places.
+# Exit 7 - We call a function sanitize() in three places.
 # From the startup() function to check for a default .ruby-version file in
 # the same folder that the script is being run from. And then again against
 # each ruby project folder to see whether we need to export the version
-# before bundle update is run. This function always expects 2 arguments. So
-# we do a basic check for those arguments and error out if not found.
+# before bundle update is run. Finally we call it once more to make sure we
+# have a resonable version set before trying to update RubyGems. sanitize()
+# always expects 1 argument which is the full path (incl filename) to the
+# .ruby-version file. If this isn't passed we error out.
 
 # Putting this here to trap it quickly
 
@@ -107,23 +108,23 @@ cleanup(){
 
   trap '' ERR EXIT SIGHUP SIGINT SIGTERM
 
-  echo ""
-  echo "5. Cleaning up and exiting."
+  printf "\n"
+  printf "5. Cleaning up and exiting.\n"
 
-  echo "[MSG]: Unsetting exported variables."
+  printf "[MSG]: Unsetting exported variables.\n"
   unset BUNDLE_GEMFILE
   unset RBENV_VERSION
 
   if [[ ! -f "${lock_file_dir}"/updateotron.lock ]]; then
-    echo "[WARNING]: Lock file does not exist and was not deleted."
-    echo "It should have been here: ${lock_file_dir}/updateotron.lock."
+    printf "[WARNING]: Lock file does not exist and was not deleted.\n"
+    printf "We tried here: %s/updateotron.lock.\n" "${lock_file_dir}"
   else
-    echo "[MSG]: Removing lock file."
+    printf "[MSG]: Removing lock file.\n"
     rm "${lock_file_dir}"/updateotron.lock
   fi
 
-  echo ""
-  echo "Exit code is: ${exit_status}"
+  printf "\n"
+  printf "Exit code is: %s\n" "${exit_status}"
 }
 
 trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
@@ -138,9 +139,9 @@ trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 
 sanitize(){
 
-  if [[ "${#}" -ne 1 ]]; then
-    echo "[ERROR 7]: We expected 1 argument to the sanitize() function."
-    echo "But we got ${#} instead."
+  if [[ "${#}" -ne 2 ]]; then
+    printf "[ERROR 7]: We expected 2 arguments to the sanitize() function.\n"
+    printf "But we got %s instead.\n" "${#}"
     exit 7
   fi
 
@@ -160,158 +161,192 @@ sanitize(){
     if [[ "${rbv_line}" =~ ${rbv_reg} ]]; then
       rbv_downcase="${BASH_REMATCH[0],,}" &&
         ruby_version="${rbv_downcase//[^0-9a-z\.\-]/}" &&
-        ((reg_matches="${reg_matches}"+1)) &&
-        echo "" &&
-        echo "Setting Ruby version: ${ruby_version}" &&
-        break
+        ((reg_matches="${reg_matches}"+1))
+      printf "\n"
+      printf "Setting Ruby version: %s\n" "${ruby_version}"
+      break
     fi
   done < "${1}"
 
-  # If we didn't find any matches to the regex we check if the ruby_version
-  # variable already exists (i.e a default version has been set). If so we
-  # are OK, if not we need to error out as we won't have a version.
+  # If we didn't find any matches to the regex we check if we are trying to
+  # use the 'default' .ruby-version file in the same dir as the script.
+  # The assumption is that that should always exist and be valid, providing
+  # a standardish system ruby version. We get this by checking for the
+  # second argument to the santize() function. If it's 0 this is a call
+  # using the 'default' .ruby-version, and if 1 not.
 
   if [[ "${reg_matches}" -lt 1 ]]; then
 
-    if [[ -v ruby_version ]]; then
-      echo "We couldn't parse ${1} and set a valid Ruby version."
-      echo "Using default: ${ruby_version}"
-    else
-      echo "We couldn't parse ${1} and set a default Ruby version."
-      echo "[ERROR 4]: No valid .ruby-version file found."
+    if [[ "${2}" -eq 0 ]]; then
+      printf "We couldn't parse %s.\n" "${1}"
+      printf "[ERROR 4]: No valid .ruby-version file found.\n"
       exit 4
+    else
+      printf "We couldn't parse %s.\n" "${1}"
+      printf "Will try and get a default now.\n"
+      sanitize "${script_dir}"/.ruby-version 0
     fi
   fi
 }
 
 startup(){
 
-  echo "Welcome to the update script."
-  echo "Doing some setup."
+  printf "Welcome to the update script.\n"
+  printf "Doing some setup.\n"
 
   if [[ -f "${lock_file_dir}"/updateotron.lock ]]; then
-    echo "[ERROR 3]: Lock file exists: ${lock_file_dir}/updateotron.lock."
+    printf "[ERROR 3]: Lock file exists: %s/updateotron.lock.\n" \
+      "${lock_file_dir}"
     exit 3
   fi
 
-  echo "[MSG]: Creating lock file."
+  printf "[MSG]: Creating lock file."
   touch "${lock_file_dir}"/updateotron.lock
 
-  if [[ ! -f "${PWD}"/.ruby-version ]]; then
-    echo "[ERROR 4]: No .ruby-version file exists at ${PWD}/.ruby-version"
+  if [[ ! -f "${script_dir}"/.ruby-version ]]; then
+    printf "[ERROR 4]: No .ruby-version file exists at %s /.ruby-version\n"  "{script_dir}"
     exit 4
   else
-    sanitize "${PWD}"/.ruby-version
+    sanitize "${script_dir}"/.ruby-version 0
   fi
 
-  echo "1. Checking if commonly used commands are OK."
+  printf "1. Checking if commonly used commands are OK.\n"
 
   err_cmd_count=0
+  err_cmd_list=()
 
-  for command_list in "${command_array[@]}"; do
+  for m_command_list in "${mandatory_commands[@]}"; do
 
-    if  ! command -v "${command_list}" > /dev/null 2>&1; then
-      ((err_cmd_count="${err_cmd_count}"+1)) &&
-        err_cmd_list+=("${command_list}")
+    if ! command -v "${m_command_list}" > /dev/null 2>&1; then
+      ((err_cmd_count="${err_cmd_count}"+1))
+      err_cmd_list+=("${m_command_list}")
     else
-      echo "Looks like ${command_list} is ready."
+      printf "Looks like %s is ready.\n" "${m_command_list}"
     fi
   done
 
   if [[ "${err_cmd_count}" -gt 0 ]]; then
-    echo "[ERROR 5]: The following commands do not exist or path is broken:"
-    echo "${err_cmd_list[*]}"
-    echo ""
-    echo "The current PATH is:"
-    echo "${PATH}"
+    printf "[ERROR 5]: The following cmds do not exist or path is broken:\n"
+    printf "%s\n" "${err_cmd_list[*]}"
+    printf "\n"
+    printf "The current PATH is:\n"
+    printf "%s\n" "${PATH}"
     exit 5
   fi
 
-  echo ""
-  echo "2. Checking that directories exist."
+  for o_command_list in "${optional_commands[@]}"; do
+
+    if ! command -v "${o_command_list}" > /dev/null 2>&1; then
+      err_cmd_list+=("${o_command_list}")
+      printf "Couldn't find %s. We will skip it.\n" "${o_command_list}"
+    else
+      printf "Looks like %s is ready.\n" "${o_command_list}"
+    fi
+  done
+
+  printf "\n"
+  printf "2. Checking that directories exist.\n"
 
   err_dir_count=0
 
   for dir_list in "${all_dir[@]}"; do
 
     if [[ ! -d "${dir_list}" ]]; then
-      ((err_dir_count="${err_dir_count}"+1)) && err_dir_list+=("${dir_list}")
+      ((err_dir_count="${err_dir_count}"+1))
+      err_dir_list+=("${dir_list}")
     else
-      echo "${dir_list} OK"
+      printf "%s OK\n" "${dir_list}"
     fi
   done
 
   if [[ "${err_dir_count}" -gt 0 ]]; then
-    echo "[ERROR 6]: The following dirs do not exist or path is broken:"
-    echo "${err_dir_list[*]}"
+    printf "[ERROR 6]: The following dirs do not exist or path is broken:"
+    printf "%s\n" "${err_dir_list[*]}"
     exit 6
   fi
 
-  echo ""
-  echo "3. Checking which source directories are git repositories."
+  printf "\n"
+  printf "3. Checking which source directories are git repositories.\n"
 
   for many_dir in "${git_dir[@]}"/*; do
     git -C "${many_dir}" rev-parse > /dev/null 2>&1 &&
-      git_array+=("${many_dir}") &&
-      echo "${many_dir} ready"
+      git_array+=("${many_dir}") && printf "%s ready\n" "${many_dir}"
   done
 
-  echo ""
-  echo "4. Checking for ruby projects that need a bundle."
+  printf "\n"
+  printf "4. Checking for ruby projects that need a bundle.\n"
 
   for ruby_dir in "${ruby_projects_dir[@]}"/*; do
 
     if [[ -f "${ruby_dir}"/Gemfile.lock ]]; then
       ruby_array+=("${ruby_dir}") &&
-        echo "${ruby_dir} ready"
+        printf "%s ready\n" "${ruby_dir}"
     fi
   done
 }
 
 updates(){
 
-  echo ""
-  echo "5. Let us try some updates."
+  printf "\n"
+  printf "5. Let us try some updates.\n"
 
-  echo "Updating rbenv"
+  printf "Updating rbenv\n"
   git -C "${rbenv_dir}" rev-parse > /dev/null 2>&1 &&
     git -C "${rbenv_dir}" pull
 
-  echo "Updating ruby-build"
+  printf "Updating ruby-build\n"
   git -C "${ruby_build_dir}" rev-parse > /dev/null 2>&1 &&
     git -C "${ruby_build_dir}" pull
 
   for dir_test in "${git_array[@]}"; do
-    echo "Updating ${dir_test}"
+    printf "Updating %s\n" "${dir_test}"
     git -C "${dir_test}" pull
   done
 
   for rb_dir in "${ruby_array[@]}"; do
 
     if [[ -f "${rb_dir}"/.ruby-version ]]; then
-      sanitize "${rb_dir}"/.ruby-version
+      sanitize "${rb_dir}"/.ruby-version 1
     else
-      echo "Using default ruby version: ${ruby_version}"
+      printf "Using default Ruby version: %s\n" "${ruby_version}"
     fi
 
-    echo "Updating ${rb_dir}"
+    printf "Updating %s\n" "${rb_dir}"
     export BUNDLE_GEMFILE="${rb_dir}"/Gemfile &&
       export RBENV_VERSION="${ruby_version}" &&
       bundle update
   done
 
-  echo ""
-  echo "Updating Rust and Cargo."
-  rustup update
+  # Rust and Cabal are optional so we skip them if not found or not in
+  # $PATH.
 
-  echo ""
-  echo "Updating Cabal packages."
-  cabal update
+  if [[ "${err_cmd_list[*]}" =~ rustup ]]; then
+    printf "\n"
+    printf "Skipping Rust updates.\n"
+  else
+    printf "\n"
+    printf "Updating Rust and Cargo.\n"
+    rustup update
+  fi
 
-  echo ""
-  echo "Updating Ruby Gems"
-  gem update --system
+  if [[ "${err_cmd_list[*]}" =~ cabal ]]; then
+    printf "\n"
+    printf "Skipping Cabal updates.\n"
+  else
+    printf "\n"
+    printf "Updating Cabal packages.\n"
+    cabal update
+  fi
+
+  # We re-set the ruby version once more in case an earlier update to a ruby
+  # project folder left us on a different version
+
+  sanitize "${script_dir}"/.ruby-version 0
+  printf "Updating Ruby Gems.\n"
+  export RBENV_VERSION="${ruby_version}" &&
+    gem update --system
 }
 
 startup
 updates
+exit 0
