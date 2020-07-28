@@ -5,23 +5,18 @@
 
 # TODO
 #
-# Consider moving the sanitize function to part of the startup and
-# so we remove ruby projects from the update array if there is a badly
-# formatted .ruby-version file. If there is no file it should be safe(er)
-# to use the default.
-#
 # Keep working on rbv_reg regex in the sanitize() function.
 #
-# Try to get the downcase and param expansion in sanitize() function
-# combined into one.
+# Refactor variable names to be consistent i.e ruby_dir, git_dir, git_array
 #
-# Consider checking for the .ruby-version in the home dir and the same order
-# that ruby itself checks for those files to determine default version.
-# Maybe start with if one exists in same dir as script and go from there.
-# Is this just duplicating what rbenv/ruby itself is doing tho?
+# Check for implied variables i.e for xxxvar in such_array and manually set
+# them at the start of the function to catch cases where no matches are
+# found from top to bottom of checks.
 #
-# Do we need to eval rbenv ... ? What a time to be alive.
+# Where we are checking for an argument to a function i.e eq - 0 explicitly
+# write cases for other values if received (negative numbers or higher)
 #
+# Set some of the dirs to empty folders (ruby, git etc) to test edge cases
 
 set -o errexit
 set -o nounset
@@ -55,6 +50,7 @@ all_dir=(
 
 mandatory_commands=(bundle gem git rbenv)
 optional_commands=(cabal rustup)
+rbv_file='/.ruby-version'
 
 # The following exit codes are specified.
 # When adding new ones take into account:
@@ -74,7 +70,7 @@ optional_commands=(cabal rustup)
 # We expect a .ruby-version file to be in the same directory that the
 # script is executed from. This is used as a fallback if one of the ruby
 # projects doesn't contain one, at least we have a version to use. If this
-# file does not exist or itsn't valid and fails to be parsed we'll error out.
+# file does not exist or is not valid and fails to be parsed we'll error out.
 #
 # Exit 5 - Missing commands or broken $PATH.
 # We expect certain commands to exist else it is probably not worth the
@@ -112,8 +108,8 @@ cleanup(){
   printf "5. Cleaning up and exiting.\n"
 
   printf "[MSG]: Unsetting exported variables.\n"
-  unset BUNDLE_GEMFILE
-  unset RBENV_VERSION
+  unset 'BUNDLE_GEMFILE'
+  unset 'RBENV_VERSION'
 
   if [[ ! -f "${lock_file_dir}"/updateotron.lock ]]; then
     printf "[WARNING]: Lock file does not exist and was not deleted.\n"
@@ -130,12 +126,11 @@ cleanup(){
 trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 
 # This sanitize function is trying to parse the .ruby-version file and
-# make sure we have a sane string to set. Part of the reason it's reading
-# line-line is so we can use the BASH_REMATCH array to easily capture the
-# first succesful string. It also avoids using grep, sed, awk etc.
-# For example this prevents against a file containing two valid version
-# numbers on different lines. i.e '1.0.0' and '2.0.0' risk becoming
-# '1.0.02.0.0' if we just strip whitespace and non-digits plus '.s'.
+# make sure we have a sane string to set. It gets called from within the
+# startup() and update() functions and passed with two mandatory arguments.
+# $1 is full path including filename. $2 is either a 0 or 1. 0 indicates
+# it's a call to attempt to set a default ruby version so must succeed or
+# error out. 1 is a call that could fail and fall back to a default version.
 
 sanitize(){
 
@@ -145,8 +140,8 @@ sanitize(){
     exit 7
   fi
 
-  rbv_reg="^([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z]{1,10}))?$"
   reg_matches=0
+  rbv_reg="^([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?$"
 
   # || [[ -n $rbv_line ]] prevents the last line from being ignored if it
   # doesn't end with a \n (since read returns a non-zero exit code when it
@@ -154,37 +149,46 @@ sanitize(){
 
   while read -r rbv_line || [[ -n "$rbv_line" ]]; do
 
-  # This looks a bit jank. Basically we're trying to convert to lower case
-  # the contents of the BASH_REMATCH array then re-use it to strip
-  # everything but digits, lower case letters, '.s' and '-'s.
+  # This looks a bit jank but it avoids external applications like grep,
+  # sed, awk etc.
 
     if [[ "${rbv_line}" =~ ${rbv_reg} ]]; then
-      rbv_downcase="${BASH_REMATCH[0],,}" &&
-        ruby_version="${rbv_downcase//[^0-9a-z\.\-]/}" &&
+
+      if [[ "${2}" -lt 2 ]]; then
+        rbv_downcase="${BASH_REMATCH[0],,}" &&
+          ruby_version="${rbv_downcase//[^0-9a-z\.\-]/}" &&
+          ((reg_matches="${reg_matches}"+1))
+        printf "\n"
+        printf "Setting Ruby version: %s\n" "${ruby_version}"
+        break
+      else
         ((reg_matches="${reg_matches}"+1))
-      printf "\n"
-      printf "Setting Ruby version: %s\n" "${ruby_version}"
-      break
+        break
+      fi
     fi
-  done < "${1}"
+  done < "${1}${rbv_file}"
 
   # If we didn't find any matches to the regex we check if we are trying to
   # use the 'default' .ruby-version file in the same dir as the script.
-  # The assumption is that that should always exist and be valid, providing
+  # The assumption is that file should always exist and be valid, providing
   # a standardish system ruby version. We get this by checking for the
   # second argument to the santize() function. If it's 0 this is a call
-  # using the 'default' .ruby-version, and if 1 not.
+  # using the 'default' .ruby-version and so if fails will error out.
 
-  if [[ "${reg_matches}" -lt 1 ]]; then
+  if [[ "${reg_matches}" -eq 0 ]]; then
 
     if [[ "${2}" -eq 0 ]]; then
-      printf "We couldn't parse %s.\n" "${1}"
-      printf "[ERROR 4]: No valid .ruby-version file found.\n"
+      printf "We couldn't parse %s%s.\n" "${1}" "${rbv_file}"
+      printf "[ERROR 4]: No valid %s file found.\n" "${rbv_file}"
       exit 4
+    elif [[ "${2}" -eq 2 ]]; then
+      printf "We couldn't parse %s%s.\n" "${1}" "${rbv_file}"
+      printf "We'll remove it from the update list to be safe.\n"
+      del_ruby_update+=("${1}")
     else
-      printf "We couldn't parse %s.\n" "${1}"
-      printf "Will try and get a default now.\n"
-      sanitize "${script_dir}"/.ruby-version 0
+      printf "We couldn't parse %s%s.\n" "${1}" "${rbv_file}"
+      printf "We'll attempt to set a default Ruby version.\n"
+      sanitize "${script_dir}" 0
     fi
   fi
 }
@@ -203,11 +207,12 @@ startup(){
   printf "[MSG]: Creating lock file."
   touch "${lock_file_dir}"/updateotron.lock
 
-  if [[ ! -f "${script_dir}"/.ruby-version ]]; then
-    printf "[ERROR 4]: No .ruby-version file exists at %s /.ruby-version\n"  "{script_dir}"
+  if [[ ! -f "${script_dir}""${rbv_file}" ]]; then
+    printf "[ERROR 4]: No %s file exists at %s%s\n" \
+      "${rbv_file}" "${script_dir}" "${rbv_file}"
     exit 4
   else
-    sanitize "${script_dir}"/.ruby-version 0
+    sanitize "${script_dir}" 0
   fi
 
   printf "1. Checking if commonly used commands are OK.\n"
@@ -268,20 +273,41 @@ startup(){
   printf "\n"
   printf "3. Checking which source directories are git repositories.\n"
 
-  for many_dir in "${git_dir[@]}"/*; do
-    git -C "${many_dir}" rev-parse > /dev/null 2>&1 &&
+  for many_dir in "${git_dir[@]}"/*/; do
+
+    if [[ -d "${many_dir}"/.git ]]; then
       git_array+=("${many_dir}") && printf "%s ready\n" "${many_dir}"
+    fi
   done
+}
+
+ruby_project_checks(){
 
   printf "\n"
   printf "4. Checking for ruby projects that need a bundle.\n"
 
-  for ruby_dir in "${ruby_projects_dir[@]}"/*; do
+  for ruby_dir in "${ruby_projects_dir[@]}"/*/; do
 
     if [[ -f "${ruby_dir}"/Gemfile.lock ]]; then
       ruby_array+=("${ruby_dir}") &&
         printf "%s ready\n" "${ruby_dir}"
     fi
+  done
+
+  for ruby_checks in "${ruby_array[@]}"; do
+
+    if [[ -f "${ruby_dir}${rbv_file}" ]]; then
+      sanitize "${ruby_checks}" 2
+    fi
+  done
+
+  for del_target in "${del_ruby_update[@]}"; do
+
+    for index in "${!ruby_array[@]}"; do
+      if [[ "${ruby_array[index]}" == "$del_target" ]]; then
+        unset 'ruby_array[index]'
+      fi
+    done
   done
 }
 
@@ -291,12 +317,14 @@ updates(){
   printf "5. Let us try some updates.\n"
 
   printf "Updating rbenv\n"
-  git -C "${rbenv_dir}" rev-parse > /dev/null 2>&1 &&
+  if [[ -d "${rbenv_dir}"/.git ]]; then
     git -C "${rbenv_dir}" pull
+  fi
 
   printf "Updating ruby-build\n"
-  git -C "${ruby_build_dir}" rev-parse > /dev/null 2>&1 &&
+  if [[ -d "${ruby_build_dir}"/.git ]]; then
     git -C "${ruby_build_dir}" pull
+  fi
 
   for dir_test in "${git_array[@]}"; do
     printf "Updating %s\n" "${dir_test}"
@@ -305,8 +333,8 @@ updates(){
 
   for rb_dir in "${ruby_array[@]}"; do
 
-    if [[ -f "${rb_dir}"/.ruby-version ]]; then
-      sanitize "${rb_dir}"/.ruby-version 1
+    if [[ -f "${rb_dir}""${rbv_file}" ]]; then
+     sanitize "${rb_dir}" 1
     else
       printf "Using default Ruby version: %s\n" "${ruby_version}"
     fi
@@ -317,8 +345,7 @@ updates(){
       bundle update
   done
 
-  # Rust and Cabal are optional so we skip them if not found or not in
-  # $PATH.
+  # Rust and Cabal are optional so we skip them if not found or not in $PATH.
 
   if [[ "${err_cmd_list[*]}" =~ rustup ]]; then
     printf "\n"
@@ -339,14 +366,15 @@ updates(){
   fi
 
   # We re-set the ruby version once more in case an earlier update to a ruby
-  # project folder left us on a different version
+  # project folder left us on a different version.
 
-  sanitize "${script_dir}"/.ruby-version 0
+  sanitize "${script_dir}" 0
   printf "Updating Ruby Gems.\n"
   export RBENV_VERSION="${ruby_version}" &&
     gem update --system
 }
 
 startup
+ruby_project_checks
 updates
 exit 0
