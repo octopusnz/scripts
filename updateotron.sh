@@ -17,7 +17,8 @@
 # write cases for other values if received (negative numbers or higher)
 #
 # Set some of the dirs to empty folders (ruby, git etc) to test edge cases
-
+#
+# Re-write exit code comments
 
 set -o errexit
 set -o nounset
@@ -32,14 +33,14 @@ if [[ "${BASH_VERSINFO[0]:-0}" -lt 4 ]]; then
   bash_err=1
 elif [[ "${BASH_VERSINFO[0]:-0}" -eq 4 ]]; then
 
-    if [[ "${BASH_VERSINFO[1]:-0}" -lt 2 ]]; then
+  if [[ "${BASH_VERSINFO[1]:-0}" -lt 2 ]]; then
       bash_err=1
-    fi
+  fi
 fi
 
 if [[ "${bash_err}" -eq 1  ]]; then
   printf "We target Bash version 4.2+ due to the use of associatve arrays.\n"
-  printf "We also use declare -g which may not be supported in < 4.2.\n"
+  printf "We also use 'declare -g' which may not be supported in < 4.2.\n"
   printf "Your current Bash version is: %s\n" "${BASH_VERSION}"
   exit 8
 fi
@@ -104,9 +105,9 @@ git_check='/.git'
 # always expects 1 argument which is the full path (incl filename) to the
 # .ruby-version file. If this isn't passed we error out.
 #
-# Exit 8 - Bash version is less than 4.
+# Exit 8 - Bash version is less than 4.2.
 #
-# Exit 9 - Logic error in update()
+# Exit 9 - Logic errors in general.
 
 # Putting this here to trap it quickly
 
@@ -187,7 +188,7 @@ sanitize(){
           ruby_version="${rbv_downcase//[^0-9a-z\.\-]/}" &&
           ruby_array+=(["${1}"]="${ruby_version}")
         elif [[ "${2}" -eq 0 ]]; then
-          def_ruby_version="${rbv_downcase//[^0-9a-z\.\-]/}" &&
+          def_ruby_version="${rbv_downcase//[^0-9a-z\.\-]/}"
           printf "\n"
           printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
         fi
@@ -328,14 +329,14 @@ startup(){
   printf "3. Checking which source directories are git repositories.\n"
 
   # Here we were using git -C rev-parse but trouble ensued if we tested
-  # with no valid git dirs in the path. Exited with 128 error code and we
-  # we assume the set -o errexit was being triggered.
+  # with no valid git dirs in the path. Typically we check for a .git dir
+  # here and good enough.
 
   for many_dir in "${git_dir[@]}"/*/; do
 
     if [[ -d "${many_dir%/}${git_check}" ]]; then
-      git_array+=("${many_dir}") &&
-        printf "%s ready\n" "${many_dir}"
+      git_array+=("${many_dir}")
+      printf "%s ready\n" "${many_dir}"
     fi
   done
 }
@@ -354,6 +355,7 @@ ruby_curation(){
   for ruby_dir_test in "${ruby_projects_dir[@]}"/*/; do
 
     if [[ -f "${ruby_dir_test%/}${gem_file}" ]]; then
+
       if [[ -f "${ruby_dir_test%/}${rbv_file}" ]]; then
          printf "%s ready\n" "${ruby_dir_test}"
          sanitize "${ruby_dir_test}" 1
@@ -369,8 +371,8 @@ ruby_curation(){
     for rb_i in "${!ruby_array[@]}"; do
 
       if [[ "${rb_i}" == "${del_target}" ]]; then
-        unset ruby_array["${rb_i}"] &&
-          printf "%s removed.\n" "${rb_i}"
+        unset ruby_array["${rb_i}"]
+        printf "%s removed.\n" "${rb_i}"
       fi
     done
   done
