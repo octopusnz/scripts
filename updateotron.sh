@@ -10,8 +10,6 @@
 # Keep working on rbv_reg regex in the sanitize() function.
 #
 # Seperate out -d and -f -n check logic into a function
-#
-# Try and refactor the sanitize() function logic to be less nesty
 
 set -o errexit
 set -o nounset
@@ -111,7 +109,9 @@ cleanup(){
   unset BUNDLE_GEMFILE
   unset RBENV_VERSION
 
-  if [[ ! -f "${lock_file_dir}${lock_file}" ]]; then
+  file_dir_check "${lock_file_dir}${lock_file}"
+
+  if [[ "${check_failure}" -ne 0 ]]; then
     printf "[WARNING]: Lock file does not exist and was not deleted.\n"
     printf "We tried here: %s%s\n" "${lock_file_dir%/}" "${lock_file}"
   else
@@ -143,11 +143,11 @@ logic_error(){
   printf "We caught a logic error.\n"
   printf "Usually this is caused by a variable having an unexpected value.\n"
   printf "The variable in question is: %s and its value was: %s\n" \
-      "${2}" "${1}"
+      "${2}" "${1}";
 
   if [[ -n "${BASH_LINENO[0]}" ]] && [[ -n "${FUNCNAME[1]}" ]]; then
     printf "We were in the %s() function at around line %s\n" \
-      "${FUNCNAME[1]}" "${BASH_LINENO[0]}"
+      "${FUNCNAME[1]}" "${BASH_LINENO[0]}";
   fi
 
   exit 9
@@ -164,7 +164,7 @@ input_clean(){
   local tmp_clean_1
   local tmp_clean_2
 
-  unset cleaned_var
+  cleaned_var=''
 
   if [[ "${#}" -ne 1 ]]; then
     printf "[ERROR 7]: We expected 1 argument to the input_clean() function.\n"
@@ -175,6 +175,39 @@ input_clean(){
   tmp_clean_1="${1,,}" &&
     tmp_clean_2="${tmp_clean_1//[^0-9a-z\.\-]/}" &&
     cleaned_var="${tmp_clean_2}";
+
+  return 0;
+}
+
+file_dir_check(){
+
+  local tests
+
+  check_failure=''
+
+  if [[ "${#}" -lt 1 ]]; then
+    printf "[ERROR 7]: We expected at least 1 argument to the dir_checker()\n"
+    printf "function.\n"
+    printf "But we got %s instead.\n" "${#}"
+    exit 7
+  fi
+
+  for tests in "${@}"; do
+
+    if [[ -n "${tests}" ]]; then
+
+      if [[ -d "${tests}" ]] || [[ -f "${tests}" ]]; then
+        check_failure=0
+      else
+        check_failure=1
+        break
+      fi
+
+    else
+      check_failure=1
+      break
+    fi
+  done
 
   return 0;
 }
@@ -201,15 +234,16 @@ sanitize(){
 
   reg_matches=0
 
+  # Need to re-test, if this wasn't set bad things happened when sanitize
+  # failed.
+
+  tmp_ruby_version=''
+
   # || [[ -n $rbv_line ]] prevents the last line from being ignored if it
   # doesn't end with a \n (since read returns a non-zero exit code when it
   # encounters EOF).
 
   while read -r -t 3 rbv_line || [[ -n "${rbv_line}" ]]; do
-
-    # This looks a bit jank but it avoids external applications like grep,
-    # sed and awk. Basically we lowercase any alpha characters and trim anything
-    # we don't need.
 
     if [[ "${rbv_line}" =~ ${rbv_reg} ]]; then
       input_clean "${BASH_REMATCH[0]}"
@@ -220,30 +254,37 @@ sanitize(){
         logic_error 'unset' 'cleaned_var'
       fi
 
-      # We compare and contrast with the avaliable verisons rbenv knows about
-
-      for such_versions in ${rbenv_versions[*]}; do
-
-        if [[ "${tmp_ruby_version}" == "${such_versions}" ]]; then
-
-          if [[ "${2}" -eq 1 ]]; then
-            ruby_array+=(["${1}"]="${tmp_ruby_version}") &&
-              reg_matches=1;
-            break
-          elif [[ "${2}" -eq 0 ]]; then
-            def_ruby_version="${tmp_ruby_version}" &&
-              reg_matches=1;
-            printf "\n"
-            printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
-            break
-          else
-            logic_error "${2}" '2'
-          fi
-        fi
-      done
       break
+
     fi
   done < "${1%/}${rbv_file}"
+
+  # We compare and contrast with the available verisons rbenv knows about
+
+  for such_versions in "${rbenv_versions[@]}"; do
+
+    if [[ "${tmp_ruby_version}" == "${such_versions}" ]]; then
+
+      case "${2}" in
+        [0])
+          def_ruby_version="${tmp_ruby_version}" &&
+            reg_matches=1;
+          printf "\n"
+          printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
+          ;;
+        [1])
+          ruby_array+=(["${1}"]="${tmp_ruby_version}") &&
+            reg_matches=1;
+          ;;
+        [*])
+          logic_error "${2}" '2'
+          ;;
+      esac
+
+      break
+
+    fi
+  done
 
   # If we didn't find any matches to the regex we check if we are trying to
   # set a default ruby version, using the file in the same dir the script is
@@ -251,18 +292,24 @@ sanitize(){
   # remove that particular ruby project directory from the update array.
 
   if [[ "${reg_matches}" -eq 0 ]]; then
+    printf "We couldn't parse %s%s.\n" "${1%/}" "${rbv_file}"
 
-     printf "We couldn't parse %s%s.\n" "${1%/}" "${rbv_file}"
+    case "${2}" in
+      [0])
+        printf "[ERROR 4]: No valid %s file found.\n" "${rbv_file}"
+        exit 4
+        ;;
+      [1])
+        printf "We'll remove it from the update list to be safe.\n"
+        del_ruby_update+=("${1}")
+        ;;
+      [*])
+        logic_error "${2}" '2'
+        ;;
+    esac
 
-    if [[ "${2}" -eq 0 ]]; then
-      printf "[ERROR 4]: No valid %s file found.\n" "${rbv_file}"
-      exit 4
-    elif [[ "${2}" -eq 1 ]]; then
-      printf "We'll remove it from the update list to be safe.\n"
-      del_ruby_update+=("${1}")
-    else
-      logic_error "${2}" '2'
-    fi
+  elif [[ "${reg_matches}" -ne 1 ]]; then
+    logic_error "${reg_matches}" 'reg_matches'
   fi
 
   return 0;
@@ -313,14 +360,15 @@ startup(){
 
   bash_err=0
 
-  if [[ "${BASH_VERSINFO[0]:-0}" -lt 4 ]]; then
-    bash_err=1
-  elif [[ "${BASH_VERSINFO[0]}" -eq 4 ]]; then
+  case "${BASH_VERSINFO[0]:=0}" in
 
-    if [[ "${BASH_VERSINFO[1]:-0}" -lt 3 ]]; then
-      bash_err=1
-    fi
-  fi
+    [0-3])  bash_err=1
+            ;;
+      [4])  if [[ "${BASH_VERSINFO[1]:-0}" -lt 3 ]]; then
+              bash_err=1
+            fi
+            ;;
+  esac
 
   if [[ "${bash_err}" -eq 1 ]]; then
     printf "We target Bash version 4.3+ due to the use of associative arrays.\n"
@@ -334,13 +382,11 @@ startup(){
   printf "Welcome to the update script.\n"
   printf "Doing some setup.\n"
 
-  # We use -n here just to double check variable exists and is not empty to
-  # prevent false-positive evaluation to true.
+  file_dir_check "${lock_file_dir}${lock_file}"
 
-  if [[ -n "${lock_file_dir}" ]] && [[ -n "${lock_file}" ]] &&
-      [[ -f "${lock_file_dir}${lock_file}" ]]; then
+  if [[ "${check_failure}" -eq 0 ]]; then
     printf "[ERROR 3]: Lock file exists: %s%s\n" "${lock_file_dir%/}" \
-      "${lock_file}"
+      "${lock_file}";
     exit 3
   fi
 
@@ -364,7 +410,7 @@ startup(){
         printf "Couldn't find %s. We will skip it.\n" "${cmd_test}"
       else
         logic_error "${command_list["${cmd_test}"]}" 'command_list[cmd_test]'
-    fi
+      fi
 
     else
       printf "Looks like %s is ready.\n" "${cmd_test}"
@@ -382,10 +428,11 @@ startup(){
     logic_error "${err_cmd}" 'err_cmd'
   fi
 
-  if [[ -n "${script_dir}" ]] && [[ -n "${rbv_file}" ]] &&
-    [[ ! -f "${script_dir%/}${rbv_file}" ]]; then
-      printf "[ERROR 4]: No %s file exists at %s%s\n""${script_dir%/}" \
-        "${rbv_file}"
+  file_dir_check "${script_dir%/}${rbv_file}"
+
+  if [[ "${check_failure}" -ne 0 ]]; then
+      printf "[ERROR 4]: No %s file exists at %s%s\n" "${rbv_file}" \
+       "${script_dir%/}" "${rbv_file}";
     exit 4
   fi
 
@@ -396,7 +443,9 @@ startup(){
 
   for dir_list in "${all_dir[@]}"; do
 
-    if [[ ! -d "${dir_list}" ]]; then
+    file_dir_check "${dir_list}"
+
+    if [[ "${check_failure}" -ne 0 ]]; then
         err_dir_list+=("${dir_list}") &&
           err_dir=1;
     else
@@ -421,11 +470,12 @@ startup(){
 
   for many_dir in "${git_dir[@]}"/*/; do
 
-    if [[ -n "${many_dir}" ]] && [[ -n "${git_check}" ]] &&
-      [[ -d "${many_dir%/}${git_check}" ]]; then
-        git -C "${many_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
-          git_array+=("${many_dir}") &&
-          printf "%s ready\n" "${many_dir}";
+    file_dir_check "${many_dir%/}${git_check}"
+
+    if [[ "${check_failure}" -eq 0 ]]; then
+      git -C "${many_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
+        git_array+=("${many_dir}") &&
+        printf "%s ready\n" "${many_dir}";
     fi
   done
 
@@ -471,7 +521,8 @@ ruby_curation(){
   fi
 
   # Try and set a default version to use
-
+  printf ""
+  printf "Attempting to set default Ruby version.\n"
   sanitize "${script_dir}" 0
 
   printf "\n"
@@ -479,16 +530,18 @@ ruby_curation(){
 
   for ruby_dir_test in "${ruby_projects_dir[@]}"/*/; do
 
-    if [[ -n "${ruby_dir_test}" ]] && [[ -n "${gem_file}" ]] &&
-      [[ -f "${ruby_dir_test%/}${gem_file}" ]]; then
+    file_dir_check "${ruby_dir_test%/}${gem_file}"
 
-      if [[ -n "${ruby_dir_test}" ]] && [[ -n "${rbv_file}" ]] &&
-        [[ -f "${ruby_dir_test%/}${rbv_file}" ]]; then
+    if [[ "${check_failure}" -eq 0 ]]; then
+
+      file_dir_check "${ruby_dir_test%/}${rbv_file}"
+
+      if [[ "${check_failure}" -eq 0 ]]; then
           printf "%s ready\n" "${ruby_dir_test}"
           sanitize "${ruby_dir_test}" 1
       else
         ruby_array+=(["${ruby_dir_test}"]="${def_ruby_version}")
-         printf "%s ready\n" "${ruby_dir_test}"
+        printf "%s ready\n" "${ruby_dir_test}"
       fi
     fi
   done
@@ -502,7 +555,7 @@ ruby_curation(){
 
       if [[ "${rb_i}" == "${del_target}" ]]; then
           unset ruby_array["${rb_i}"] &&
-          printf "%s removed.\n" "${rb_i}";
+            printf "%s removed.\n" "${rb_i}";
       fi
     done
   done
@@ -521,18 +574,20 @@ updates(){
   printf "\n"
   printf "5. Let us try some updates.\n"
 
-  if [[ -n "${rbenv_dir}" ]] && [[ -n "${git_check}" ]] &&
-    [[ -d "${rbenv_dir}${git_check}" ]]; then
-      git -C "${rbenv_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
-        printf "Updating rbenv\n" &&
-        git -C "${rbenv_dir}" pull;
+  file_dir_check "${rbenv_dir%/}${git_check}"
+
+  if [[ "${check_failure}" -eq 0 ]]; then
+    git -C "${rbenv_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
+      printf "Updating rbenv\n" &&
+      git -C "${rbenv_dir}" pull;
   fi
 
-  if [[ -n "${ruby_build_dir}" ]] && [[ -n "${git_check}" ]] &&
-    [[ -d "${ruby_build_dir}${git_check}" ]]; then
-      git -C "${ruby_build_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
-        printf "Updating ruby-build\n" &&
-        git -C "${ruby_build_dir}" pull;
+  file_dir_check "${ruby_build_dir%/}${git_check}"
+
+  if [[ "${check_failure}" -eq 0 ]]; then
+    git -C "${ruby_build_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
+      printf "Updating ruby-build\n" &&
+      git -C "${ruby_build_dir}" pull;
   fi
 
   for git_updates in "${git_array[@]}"; do
