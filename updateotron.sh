@@ -8,8 +8,6 @@
 # Turn this into a dashboard
 #
 # Keep working on rbv_reg regex in the sanitize() function.
-#
-# Seperate out -d and -f -n check logic into a function
 
 set -o errexit
 set -o nounset
@@ -85,47 +83,6 @@ rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
 # available. If this command doesn't work or returns nothing that matches our
 # regex then we error out. Check if rbenv is on your path and whether it's
 # being invoked correctly.
-
-
-# Putting this here to trap it quickly
-
-cleanup(){
-
-  local exit_status
-
-  # This needs to be first so it captures the exit status from the cmd
-  # that triggered the trap.
-
-  exit_status="${?}"
-
-  # Unset trap to prevent loops or double calling the cleanup() function.
-
-  trap '' ERR EXIT SIGHUP SIGINT SIGTERM
-
-  printf "\n"
-  printf "5. Cleaning up and exiting.\n"
-
-  printf "[MSG]: Unsetting exported variables.\n"
-  unset BUNDLE_GEMFILE
-  unset RBENV_VERSION
-
-  file_dir_check "${lock_file_dir}${lock_file}"
-
-  if [[ "${check_failure}" -ne 0 ]]; then
-    printf "[WARNING]: Lock file does not exist and was not deleted.\n"
-    printf "We tried here: %s%s\n" "${lock_file_dir%/}" "${lock_file}"
-  else
-    printf "[MSG]: Removing lock file.\n"
-    rm "${lock_file_dir%/}${lock_file}"
-  fi
-
-  printf "\n"
-  printf "Exit code is: %s\n" "${exit_status}"
-
-  return 0;
-}
-
-trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 
 # We handle logic errors from throughout the script here. We expect two
 # arguments when this gets called. 1 is the contents of the variable that
@@ -211,6 +168,45 @@ file_dir_check(){
 
   return 0;
 }
+
+cleanup(){
+
+  local exit_status
+
+  # This needs to be first so it captures the exit status from the cmd
+  # that triggered the trap.
+
+  exit_status="${?}"
+
+  # Unset trap to prevent loops or double calling the cleanup() function.
+
+  trap '' ERR EXIT SIGHUP SIGINT SIGTERM
+
+  printf "\n"
+  printf "5. Cleaning up and exiting.\n"
+
+  printf "[MSG]: Unsetting exported variables.\n"
+  unset BUNDLE_GEMFILE
+  unset RBENV_VERSION
+
+  file_dir_check "${lock_file_dir%/}${lock_file}"
+
+  if [[ "${check_failure}" -eq 1 ]]; then
+    printf "[WARNING]: Lock file does not exist and was not deleted.\n"
+    printf "We tried here: %s%s\n" "${lock_file_dir%/}" "${lock_file}"
+  elif [[ "${check_failure}" -eq 0 ]]; then
+    printf "[MSG]: Removing lock file.\n"
+    rm "${lock_file_dir%/}${lock_file}"
+  else logic_error "${check_failure}" 'check_failure'
+  fi
+
+  printf "\n"
+  printf "Exit code is: %s\n" "${exit_status}"
+
+  return 0;
+}
+
+trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 
 # This sanitize function is trying to parse the .ruby-version file and
 # make sure we have a sane string to set. It gets called from within the
@@ -360,14 +356,16 @@ startup(){
 
   bash_err=0
 
-  case "${BASH_VERSINFO[0]:=0}" in
+  case "${BASH_VERSINFO[0]:-0}" in
 
-    [0-3])  bash_err=1
-            ;;
-      [4])  if [[ "${BASH_VERSINFO[1]:-0}" -lt 3 ]]; then
-              bash_err=1
-            fi
-            ;;
+    [0-3])
+        bash_err=1
+        ;;
+      [4])
+        if [[ "${BASH_VERSINFO[1]:-0}" -lt 3 ]]; then
+          bash_err=1
+        fi
+        ;;
   esac
 
   if [[ "${bash_err}" -eq 1 ]]; then
@@ -382,7 +380,7 @@ startup(){
   printf "Welcome to the update script.\n"
   printf "Doing some setup.\n"
 
-  file_dir_check "${lock_file_dir}${lock_file}"
+  file_dir_check "${lock_file_dir%/}${lock_file}"
 
   if [[ "${check_failure}" -eq 0 ]]; then
     printf "[ERROR 3]: Lock file exists: %s%s\n" "${lock_file_dir%/}" \
