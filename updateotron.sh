@@ -231,8 +231,7 @@ sanitize(){
 
   reg_matches=0
 
-  # Need to re-test, if this wasn't set bad things happened when sanitize
-  # failed.
+  # Complains if this doesn't exist due to the if comparison further down.
 
   tmp_ruby_version=''
 
@@ -250,9 +249,7 @@ sanitize(){
       else
         logic_error 'unset' 'cleaned_var'
       fi
-
       break
-
     fi
   done < "${1%/}${rbv_file}"
 
@@ -277,9 +274,7 @@ sanitize(){
           logic_error "${2}" '2'
           ;;
       esac
-
       break
-
     fi
   done
 
@@ -518,7 +513,7 @@ ruby_curation(){
   fi
 
   # Try and set a default version to use
-  printf ""
+  printf "\n"
   printf "Attempting to set default Ruby version.\n"
   sanitize "${script_dir}" 0
 
