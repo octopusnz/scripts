@@ -9,7 +9,7 @@
 #
 # See https://github.com/rubocop-hq/rubocop/blob/master/manual/configuration.md
 
-require: 
+require:
   - rubocop-performance
   - rubocop-rspec
 
@@ -22,20 +22,47 @@ Layout/EmptyLinesAroundAttributeAccessor:
 Layout/SpaceAroundMethodCallOperator:
   Enabled: true
 
+Lint/BinaryOperatorWithIdenticalOperands:
+  Enabled: true
+
 Lint/DeprecatedOpenSSLConstant:
   Enabled: true
 
 Lint/DuplicateElsifCondition:
   Enabled: true
 
+Lint/DuplicateRescueException:
+  Enabled: true
+
+Lint/EmptyConditionalBody:
+  Enabled: true
+
+Lint/FloatComparison:
+  Enabled: true
+
+Lint/MissingSuper:
+  Enabled: true
+
 Lint/MixedRegexpCaptureTypes:
+  Enabled: true
+
+Lint/OutOfRangeRegexpRef:
   Enabled: true
 
 Lint/RaiseException:
   Enabled: true
 
+Lint/SelfAssignment:
+  Enabled: true
+
 Lint/StructNewOverride:
-  Enabled: true    
+  Enabled: true
+
+Lint/TopLevelReturnWithArgument:
+  Enabled: true
+
+Lint/UnreachableLoop:
+  Enabled: true
 
 Performance/AncestorsInclude:
   Enabled: true
@@ -62,37 +89,46 @@ Performance/StringInclude:
   Enabled: true
 
 Style/AccessorGrouping:
-  Enabled: true   
+  Enabled: true
 
 Style/ArrayCoercion:
   Enabled: true
 
 Style/BisectedAttrAccessor:
-  Enabled: true   
+  Enabled: true
 
 Style/CaseLikeIf:
-  Enabled: true   
+  Enabled: true
 
 Style/EmptyMethod:
   EnforcedStyle: 'expanded'
 
+Style/ExplicitBlockArgument:
+  Enabled: true
+
 Style/ExponentialNotation:
-  Enabled: true   
+  Enabled: true
+
+Style/GlobalStdStream:
+  Enabled: true
 
 Style/HashAsLastArrayItem:
   Enabled: true
 
-Style/HashEachMethods: 
-  Enabled: true  
+Style/HashEachMethods:
+  Enabled: true
 
 Style/HashLikeCase:
   Enabled: true
 
 Style/HashTransformKeys:
-  Enabled: true 
+  Enabled: true
 
 Style/HashTransformValues:
   Enabled: true
+
+Style/OptionalBooleanParameter:
+    Enabled: true
 
 Style/RedundantAssignment:
   Enabled: true
@@ -107,7 +143,13 @@ Style/RedundantRegexpEscape:
  Enabled: true
 
 Style/RedundantFileExtensionInRequire:
-  Enabled: true  
+  Enabled: true
+
+Style/SingleArgumentDig:
+  Enabled: true
 
 Style/SlicingWithRange:
+  Enabled: true
+
+Style/StringConcatenation:
   Enabled: true

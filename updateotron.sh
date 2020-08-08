@@ -197,7 +197,8 @@ cleanup(){
   elif [[ "${check_failure}" -eq 0 ]]; then
     printf "[MSG]: Removing lock file.\n"
     rm "${lock_file_dir%/}${lock_file}"
-  else logic_error "${check_failure}" 'check_failure'
+  else
+    logic_error "${check_failure}" 'check_failure'
   fi
 
   printf "\n"
@@ -440,7 +441,6 @@ startup(){
   err_dir=0
 
   for dir_list in "${all_dir[@]}"; do
-
     file_dir_check "${dir_list}"
 
     if [[ "${check_failure}" -ne 0 ]]; then
@@ -467,7 +467,6 @@ startup(){
   # checking each one with an external application.
 
   for many_dir in "${git_dir[@]}"/*/; do
-
     file_dir_check "${many_dir%/}${git_check}"
 
     if [[ "${check_failure}" -eq 0 ]]; then
@@ -527,12 +526,10 @@ ruby_curation(){
   printf "4. Checking for ruby projects that need a bundle.\n"
 
   for ruby_dir_test in "${ruby_projects_dir[@]}"/*/; do
-
     file_dir_check "${ruby_dir_test%/}${gem_file}"
 
     if [[ "${check_failure}" -eq 0 ]]; then
-
-      file_dir_check "${ruby_dir_test%/}${rbv_file}"
+    file_dir_check "${ruby_dir_test%/}${rbv_file}"
 
       if [[ "${check_failure}" -eq 0 ]]; then
           printf "%s ready\n" "${ruby_dir_test}"
