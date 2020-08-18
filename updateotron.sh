@@ -70,7 +70,7 @@ rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
 # .ruby-version file. If this isn't passed we error out.
 #
 # Exit 8 - Bash version is less than 4.3. We use associative arrays, and also
-# 'declare -g' which is probably unsupported earlier than 4.2 We picked 4.3
+# 'declare -g' which is probably unsupported earlier than 4.2. We picked 4.3
 # minumum because we also use mapfile, which had bugs prior to 4.3. If for some
 # reason this isn't bash it might return a version of 0.0. Double check you are
 # running the script directly and not using 'sh scriptname' or something.
@@ -83,6 +83,7 @@ rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
 # available. If this command doesn't work or returns nothing that matches our
 # regex then we error out. Check if rbenv is on your path and whether it's
 # being invoked correctly.
+
 
 # We handle logic errors from throughout the script here. We expect two
 # arguments when this gets called. 1 is the contents of the variable that
@@ -198,7 +199,10 @@ cleanup(){
     printf "[MSG]: Removing lock file.\n"
     rm "${lock_file_dir%/}${lock_file}"
   else
-    logic_error "${check_failure}" 'check_failure'
+    printf "[WARNING]: There was an error and we're not sure what happened.\n"
+    printf "We tried to remove this file here: %s%s\n" "${lock_file_dir%/}" \
+      "${lock_file}"
+    printf "We'll continue to attempt to exit.\n"
   fi
 
   printf "\n"
