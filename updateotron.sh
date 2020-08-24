@@ -506,7 +506,7 @@ ruby_curation(){
         logic_error 'unset' 'cleaned_var'
       fi
     fi
-  done
+   done
 
   # If we couldn't get any sensible versions out of rbenv we'll error.
 
