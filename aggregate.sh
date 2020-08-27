@@ -1,28 +1,30 @@
 #!/usr/bin/env bash
 
-# aggregate
-# This script gives you a consolidated view of your C code.
+#******************************************************************************#
+#                             aggregate.sh                                     #
+#                       written by Jacob Doherty                               #
+#                             August 2020                                      #
+#                                                                              #
+#                           Requires Bash v4.3+                                #
+#             See aggregate.txt for usage and troubleshooting.                 #
+#               Source: https://github.com/octopusnz/scripts                   #
+#                                                                              #
+#              Tracks your development files and dependencies.                 #
+#******************************************************************************#
 
 set -o errexit
 set -o nounset
 set -o pipefail
 
-DEFAULT_IFS=$' \t\n'
+compiler_string="CC="
+cpp="gcc-10.2"
+file_ext="c"
+lock_file_dir="/tmp"
+lock_file="/aggregate.lock"
+project_file="Makefile"
 
-cpp='cpp-10.2'
-compiler_string='CC='
-file_ext='c'
-
-#TODO need to make these ignore whitespace
-
-sys_include_string='#include <'
-usr_include_string='#include \"'
-lock_file_dir='/tmp'
-lock_file='/aggregate.lock'
-project_file='Makefile'
-
-include_reg_sys='^\\s*#\\s*include\\s*+[<][^>]*[>]\\s*'
-include_reg_usr='^\\s*#\\s*include\\s*+[\"][^\"]*[\"]\\s*'
+include_reg_sys="^\\s*#\\s*include\\s*+[<][^>]*[>]\\s*"
+include_reg_usr="^\\s*#\\s*include\\s*+[\"][^\"]*[\"]\\s*"
 
 cleanup(){
 
@@ -42,9 +44,9 @@ cleanup(){
 
   printf "[MSG]: Unsetting exported variables.\n"
 
-  IFS="${DEFAULT_IFS}"
-  unset DEFAULT_IFS
-  unset MAPFILE
+  #IFS="${DEFAULT_IFS}"
+  #unset DEFAULT_IFS
+  #unset MAPFILE
 
   if ! rm "${lock_file_dir%/}${lock_file}"; then
     printf "[WARNING]: There was an error and we're not sure what happened.\n"
@@ -99,7 +101,7 @@ setup(){
 
   tmp_locations=()
 
-  mapfile -t tmp_locations < <("${cpp}" -v -x c < /dev/null 2>&1 | \
+  mapfile -t tmp_locations < <(cpp -v -x c < /dev/null 2>&1 | \
     sed -nE 's/^ ([^ ]+)$/\1/p')
 
   # Even though cpp does this check for non-existent dirs, we'll do it again.
@@ -133,10 +135,9 @@ get_project_dirs(){
   all_projects=()
 
   for such_projects in "${full_projects[@]}"; do
-
     such_projects="${such_projects,,}" &&
-      such_projects="${such_projects%/*}/" &&
-      all_projects+=("${such_projects}");
+    such_projects="${such_projects%/*}/" &&
+    all_projects+=("${such_projects}");
   done
 
   return 0;
@@ -144,7 +145,7 @@ get_project_dirs(){
 
 get_files(){
 
-  local such_projects
+  local proj
   local tmp_proj
   declare -gA my_codes
 
@@ -175,16 +176,25 @@ input_clean(){
   local tmp_clean_1
   local tmp_clean_2
 
-  cleaned_var=''
+  cleaned_string=""
+  tmp_clean_1=""
+  tmp_clean_2=""
 
-  tmp_clean_1="${1,,}" &&
-    tmp_clean_2="${tmp_clean_1//[^0-9a-z\.\-]/}" &&
-    cleaned_var="${tmp_clean_2}";
+  clean_regex="<(.*?)>|\"(.*?)\""
 
-    if [[ "${2}" -eq 0 ]]; then
+  tmp_clean_1="${1}"
 
+  if [[ "${tmp_clean_1}" =~ ${clean_regex} ]]; then
+    tmp_clean_2="${BASH_REMATCH[0]}" &&
+    cleaned_string="${tmp_clean_2//[^0-9a-zA-Z\.\-\_]/}";
 
-    elif [[ "${2}" -eq 1 ]]; then
+    if [[ "${3}" -eq 0 ]]; then
+      sys_headers+=(["${cleaned_string}"]="${2}")
+
+    elif [[ "${3}" -eq 1 ]]; then
+      usr_headers+=(["${cleaned_string}"]="${2}")
+    fi
+  fi
 
   return 0;
 }
@@ -196,10 +206,10 @@ regex_headers(){
   while read -r -t 3 make_line || [[ -n "${make_line}" ]]; do
 
     if [[ "${make_line}" =~ ${include_reg_sys} ]]; then
-      input_clean "${BASH_REMATCH[0]}" 0
+      input_clean "${BASH_REMATCH[0]}" "${2}" 0
 
     elif [[ "${make_line}" =~ ${include_reg_usr} ]]; then
-      input_clean "${BASH_REMATCH[0]}" 1
+      input_clean "${BASH_REMATCH[0]}" "${2}" 1
     fi
   done < "${1}"
 
@@ -210,38 +220,22 @@ get_headers(){
 
   local such_projects
   local tmp_array
-  local tmp_head
+
   declare -gA sys_headers
   declare -gA usr_headers
 
   for such_projects in "${!my_codes[@]}"; do
 
     tmp_array=()
-    tmp_head=()
+
+    # TODO: Get rid of this bleh IFS usage.
 
     IFS=' ' read -r -t 3 -a tmp_array <<< "${my_codes["${such_projects}"]}"
-    IFS="${DEFAULT_IFS}"
+    #IFS="${DEFAULT_IFS}"
 
     for such_wisdom in "${tmp_array[@]}"; do
-      regex_headers "${such_wisdom}"
+      regex_headers "${such_wisdom}" "${such_projects}"
     done
-
-    mapfile -t tmp_head < <(grep -h "${sys_include_string}" "${tmp_array[@]}")
-
-    # TODO: Need to cater these param expansion scenarios for both:
-    # #include <test> and #include<test> etc ...
-
-    if [[ "${#tmp_head[@]}" -gt 0 ]]; then
-      sys_headers+=(["${such_projects}"]="${tmp_head[@]#\#include *}")
-    fi
-
-    tmp_head=()
-
-    mapfile -t tmp_head < <(grep -h "${usr_include_string}" "${tmp_array[@]#}")
-
-    if [[ "${#tmp_head[@]}" -gt 0 ]]; then
-      usr_headers+=(["${such_projects}"]="${tmp_head[@]#\#include *}")
-    fi
   done
 
   return 0;
@@ -249,7 +243,7 @@ get_headers(){
 
 determine_compilers(){
 
-  local such_projects
+  local projects
   local tmp_array
 
   declare -gA comp_array
@@ -262,20 +256,71 @@ determine_compilers(){
 
     if [[ "${#tmp_array[@]}" -gt 0 ]]; then
       projects="${projects%/*}/" &&
-        comp_array+=(["${projects}"]="${tmp_array[@]#"${compiler_string}"*}");
+      comp_array+=(["${projects}"]="${tmp_array[@]#"${compiler_string}"*}");
     fi
   done
 
   return 0;
 }
 
-#get_all_library_locations(){
-#
-#for compilers in "${comp_array[@]}"; do
-# echo "WOO"
-#done
-#  return 0;
-#}
+get_all_library_locations(){
+
+  declare -gA smash_array
+
+  sed_q="/^lib/b 1;d;:1;s,/[^/.][^/]*/\.\./,/,;t 1;s,:[^=]*=,:;,;s,;,;  ,g"
+
+  for compilers in "${comp_array[@]}"; do
+
+    smash_array=()
+
+    if command -v "${compilers}" >> /dev/null 2>&1; then
+      mapfile -t < <("${compilers}" --print-search-dirs | sed "${sed_q}") &&
+      smash_array+=(["${compilers}"]="${MAPFILE[@]}");
+    fi
+    array_clean "${smash_array[@]}" "${!smash_array[@]}"
+  done
+
+  return 0;
+}
+
+array_clean(){
+
+  local smash_tmp
+  declare -gA new_clean
+
+  smash_tmp=()
+
+  IFS=':' read -r -t 3 -a smash_tmp <<< "${1}"
+
+    for such_dirs in "${smash_tmp[@]}"; do
+
+      if [[ -d "${such_dirs}" ]]; then
+        new_clean+=(["${such_dirs}"]="${2}")
+      fi
+    done
+
+  return 0;
+}
+
+find_problematic_headers(){
+
+  for such_headers in "${!sys_headers[@]}"; do
+
+    for such_dirs in "${header_locations[@]}"; do
+
+      if [[ -e "${such_dirs%/}/${such_headers}" ]]; then
+        echo ""
+        echo "WE FOUND ONE"
+        echo "THIS ONE: ${such_dirs}/${such_headers}"
+        echo ""
+      else
+        echo "${such_dirs%/}/${such_headers}"
+      fi
+    done
+  done
+
+  return 0;
+}
 
 
 print_some_stuff(){
@@ -303,6 +348,10 @@ print_some_stuff(){
   echo "Compilers:"
   echo "${!comp_array[@]}"
   echo "${comp_array[@]}"
+  echo ""
+  echo "New Clean Array:"
+  echo "${!new_clean[@]}"
+  echo "${new_clean[@]}"
 
   return 0;
 }
@@ -312,5 +361,7 @@ get_project_dirs
 get_files
 get_headers
 determine_compilers
-print_some_stuff
+get_all_library_locations
+find_problematic_headers
+#print_some_stuff
 exit 0
