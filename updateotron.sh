@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
+#******************************************************************************#
+#                             updateotron.sh                                   #
+#                         written by Jacob Doherty                             #
+#                               July 2020                                      #
+#                                                                              #
+#                           Requires Bash v4.3+                                #
+#               See updateotron.txt for documentation and license              #
+#                  Source: https://github.com/octopusnz/scripts                #
+#                                                                              #
+#                       Automates your update tasks.                           #
+#******************************************************************************#
 
-# updateotron
-# This script automates several update tasks.
-
-# TODO
-#
-# Turn this into a dashboard
-#
-# Keep working on rbv_reg regex in the sanitize() function.
+# TO-DO: [1]: Pretty dashboard
+# TO-DO: [2]: Review rbv_reg regex
+# TO-DO: [3]: Support for other ruby env managers (RVM)
+# TO-DO: [4]: Go support
 
 set -o errexit
 set -o nounset
@@ -29,61 +36,6 @@ lock_file='/updateotron.lock'
 rbv_file='/.ruby-version'
 git_check='/.git'
 rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
-
-# The following exit codes are specified.
-# When adding new ones take into account:
-# http://www.tldp.org/LDP/abs/html/exitcodes.html
-#
-# Exit 0 - Success.
-# Exit 1 - Reserved for system.
-# Exit 2 - Reserved for system.
-#
-# Exit 3 - Lock file exists.
-# We create a file called updateotron.lock in the $lock_file_dir variable
-# directory and check for its existence to prevent the script running
-# multiple times. We're not too precious about it on cleanup. If it doesn't
-# exist we just warn and continue to exit.
-#
-# Exit 4 - Missing .ruby-version file
-# We expect a .ruby-version file to be in the same directory that the
-# script is executed from. This is used as a fallback if one of the ruby
-# projects doesn't contain one. If this file does not exist or is not valid
-# and fails to be parsed we'll error out.
-#
-# Exit 5 - Missing commands or broken $PATH.
-# We expect certain commands to exist else it is probably not worth the
-# error handling and we just exit. Check out the commands_array in startup()
-# to see which commands it expects. Command marked mandatory will error.
-# We print the $PATH in case it's a misconfigure there too.
-#
-# Exit 6 - Missing directories or maybe a typo in configuration.
-# We expect the directories specified at the beginning of this file and in
-# $all_dir() array to exist.
-#
-# Exit 7 - We call a function sanitize() in three places.
-# From the startup() function to check for a default .ruby-version file in
-# the same folder that the script is being run from. And then again against
-# each ruby project folder to see whether we need to export the version
-# before bundle update is run. Finally we call it once more to make sure we
-# have a resonable version set before trying to update RubyGems. sanitize()
-# always expects 1 argument which is the full path (incl filename) to the
-# .ruby-version file. If this isn't passed we error out.
-#
-# Exit 8 - Bash version is less than 4.3. We use associative arrays, and also
-# 'declare -g' which is probably unsupported earlier than 4.2. We picked 4.3
-# minumum because we also use mapfile, which had bugs prior to 4.3. If for some
-# reason this isn't bash it might return a version of 0.0. Double check you are
-# running the script directly and not using 'sh scriptname' or something.
-#
-# Exit 9 - We have a general logic error. The error will hopefully capture
-# the function and variable contents that caused it. Most commonly this is
-# a variable set to an unexpected value, or something we can't parse.
-#
-# Exit 10 - We run the 'rbenv versions' command to check which versions are
-# available. If this command doesn't work or returns nothing that matches our
-# regex then we error out. Check if rbenv is on your path and whether it's
-# being invoked correctly.
-
 
 # We handle logic errors from throughout the script here. We expect two
 # arguments when this gets called. 1 is the contents of the variable that

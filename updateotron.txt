@@ -1,0 +1,142 @@
+
+													 	     updateotron
+											   by Jacob Doherty, July 2020
+
+                 Source: https://github.com/octopusnz/scripts/
+
+                 Project files: updateotron.sh
+              							    updateotron.txt
+
+               "It is what it is. And it isn't what it isn't."
+									 			  - Alexey "Tsoding" Kutepov
+
+
+0. Why does this exist?
+--------------------------
+
+1. Requirements
+-----------------------------------
+
+2. Configuration
+-----------------------------------
+
+
+
+3. Exit codes and troubleshooting
+-----------------------------------
+
+The following exit codes are specified.
+This is based on: http://www.tldp.org/LDP/abs/html/exitcodes.html
+
+Exit 0 - Success.
+Exit 1 - Reserved for system.
+Exit 2 - Reserved for system.
+
+Exit 3 - Lock file exists.
+
+	We create a file called updateotron.lock in the $lock_file_dir variable
+	directory and check for its existence to prevent the script running
+	multiple times. We're not too precious about it on cleanup. If it doesn't
+	exist we just warn and continue to exit.
+
+Exit 4 - Missing .ruby-version file
+
+	We expect a .ruby-version file to be in the same directory that the
+	script is executed from. This is used as a fallback if one of the ruby
+	projects doesn't contain one. If this file does not exist or is not valid
+	and fails to be parsed we'll error out.
+
+Exit 5 - Missing commands or broken $PATH.
+
+	We expect certain commands to exist else it is probably not worth the
+	error handling and we just exit. Check out the commands_array in startup()
+	to see which commands it expects. Command marked mandatory will error.
+	We print the $PATH in case it's a misconfigure there too.
+
+Exit 6 - Missing directories or maybe a typo in configuration.
+
+	We expect the directories specified at the beginning of this file and in
+	$all_dir() array to exist.
+
+Exit 7 - We call a function sanitize() in three places.
+
+	From the startup() function to check for a default .ruby-version file in
+	the same folder that the script is being run from. And then again against
+	each ruby project folder to see whether we need to export the version
+	before bundle update is run. Finally we call it once more to make sure we
+	have a resonable version set before trying to update RubyGems. sanitize()
+	always expects 1 argument which is the full path (incl filename) to the
+	.ruby-version file. If this isn't passed we error out.
+
+Exit 8 - Bash version is less than 4.3.
+
+	We use associative arrays, and also 'declare -g' which is probably unsupported
+	earlier than 4.2. We picked 4.3 minumum because we also use mapfile, which had
+	bugs prior to 4.3. If for some reason this isn't a bash shell it might return
+	a version of 0.0. Double check you are running the script directly and not
+	using 'sh scriptname' or something.
+
+Exit 9 - General logic error.
+
+	The error will hopefully capture the function and variable contents that
+	caused it. Most commonly this is a variable set to an unexpected value, or
+	something we can't parse.
+
+Exit 10 - No valid rbenv versions.
+
+	We run the 'rbenv versions' command to check which versions are available. If
+	this command doesn't work or returns nothing that matches our regex then we
+	error out. Check if rbenv is on your path and whether it's being invoked
+	correctly.
+
+
+4. Style and syntax choices
+-----------------------------------
+
+
+5. Contributing and bug reporting
+-----------------------------------
+
+
+6. Thanks to
+-----------------------------------
+
+ShellCheck: https://github.com/koalaman/shellcheck
+
+The Advanced Bash-Scripting Guide: https://tldp.org/LDP/abs/html/index.html
+
+Some bash related stackoverflow threads we started (please up vote!):
+
+	https://stackoverflow.com/questions/63106381/
+	https://stackoverflow.com/questions/63006756/
+
+
+7. Contacts and profiles
+-----------------------------------
+
+GitHub: 			 https://github.com/octopusnz/
+stackoverflow: https://stackoverflow.com/users/8707397/
+Email: 				 dev@theflat.gen.nz.
+
+
+8. License and copyright
+-----------------------------------
+
+Copyright 2020 Jacob Doherty.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
