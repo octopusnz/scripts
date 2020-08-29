@@ -16,11 +16,9 @@ set -o nounset
 set -o pipefail
 
 compiler_string="CC="
-cpp="gcc-10.2"
-#compiler_options="-E -x c - -v < /dev/null 2>&1"
 file_ext="c"
-lock_file_dir="/tmp"
 lock_file="/aggregate.lock"
+lock_file_dir="/tmp"
 project_file="Makefile"
 
 include_reg_sys="^\\s*#\\s*include\\s*+[<][^>]*[>]\\s*"
@@ -61,8 +59,6 @@ trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 setup(){
 
   local bash_err
-  local such_locations
-  local woo_array
 
   # Check for Bash 4.3+. We set zero if BASH_VERSINFO does not exist due
   # to really old bash versions not providing it by default.
@@ -90,26 +86,6 @@ setup(){
 
   printf "[MSG]: Creating lock file.\n"
   printf "" >> "${lock_file_dir%/}${lock_file}"
-
-  woo_array=()
-
-  # TO-DO: [4]: Put the compiler command line variables into a string
-
-  such_variable="$("${cpp}" -E -x c - -v < /dev/null 2>&1)"
-  such_variable1="${such_variable#*#include <...> search starts here:}" &&
-  such_variable2="${such_variable1%End of search list.*}" &&
-  such_variable3="${such_variable2// /}";
-
-  readarray -t woo_array <<< "$such_variable3"
-
-  header_locations=()
-
-  for such_locations in "${woo_array[@]}"; do
-
-    if [[ -d "${such_locations}" ]]; then
-      header_locations+=("${such_locations}")
-    fi
-  done
 
   return 0;
 }
@@ -165,6 +141,33 @@ get_files(){
   return 0;
 }
 
+count_lines(){
+
+  local countme
+  local many_projects
+  local such_projects
+  local tmp_array
+
+  declare -gA line_count
+
+  for such_projects in "${!my_codes[@]}"; do
+
+    countme=0
+
+    IFS=' ' read -r -t 3 -a tmp_array <<< "${my_codes["${such_projects}"]}"
+
+    for many_projects in "${tmp_array[@]}"; do
+      countme=$((countme+$(wc -l < "${many_projects}")))
+
+      if [[ "${countme}" -gt 0 ]]; then
+        line_count+=(["${such_projects}"]="${countme}")
+      fi
+    done
+  done
+
+  return 0;
+}
+
 determine_compilers(){
 
   local projects
@@ -187,9 +190,59 @@ determine_compilers(){
   return 0;
 }
 
+get_compiler_includes(){
+
+  local projects
+  local such_locations
+  local tmp_array
+  local tmp_array_2
+  local tmp_var
+  local tmp_var_2
+
+  declare -gA compiler_includes
+
+  for projects in "${comp_array[@]}"; do
+
+    tmp_var=""
+    tmp_var_2=""
+    tmp_array=()
+    tmp_array_2=()
+
+    # TO-DO: [4]: Put the compiler command line variables into a string
+
+    tmp_var="$("${projects}" -E -x c - -v < /dev/null 2>&1)" &&
+    tmp_var="${tmp_var#*#include <...> search starts here:}" &&
+    tmp_var="${tmp_var%End of search list.*}" &&
+    tmp_var="${tmp_var// /}"
+
+    #TO-DO [6]: Look at read-array command line args
+
+    readarray -t tmp_array <<< "${tmp_var}"
+
+    # Check if dir exists. This will also get rid of whitespace fields.
+
+    for such_locations in "${tmp_array[@]}"; do
+      if [[ -d "${such_locations}" ]]; then
+        tmp_array_2+=("${such_locations}")
+      fi
+    done
+
+    # Flatten back into a string
+
+    tmp_var_2=${tmp_array_2[*]}
+
+    # Store string in associative array using compiler value as key.
+
+    compiler_includes+=(["${projects}"]="${tmp_var_2}")
+  done
+
+  return 0;
+}
+
 get_headers(){
 
   local such_projects
+  local such_wisdom
   local tmp_array
 
   declare -gA usr_problem_headers
@@ -249,7 +302,6 @@ input_clean(){
 
     if [[ "${3}" -eq 0 ]]; then
       find_prob_sys_headers "${cleaned_string}" "${2}"
-
     elif [[ "${3}" -eq 1 ]]; then
       find_prob_usr_headers "${cleaned_string}" "${2}"
     fi
@@ -264,26 +316,40 @@ input_clean(){
 
 find_prob_sys_headers(){
 
+  local comp_lookup
+  local head_lookup
   local such_dirs
   local success_counter
 
+  # Go back through and get the compiler string from this array. Based on the
+  # project folder which was passed into this function.
+
+  comp_lookup=""
+  comp_lookup="${comp_array["${2}"]}"
+
+  # Need to build this array on the fly based on the string of dirs we
+  # have in another array.
+
+  head_lookup=()
+  IFS=' ' read -r -t 3 -a head_lookup <<< "${compiler_includes[${comp_lookup}]}"
+
   success_counter=0
 
-    for such_dirs in "${header_locations[@]}"; do
+  for such_dirs in "${head_lookup[@]}"; do
 
-      # TO-DO: [5]: Decide whether we want to count all successes
+    # TO-DO: [5]: Decide whether we want to count all successes
 
-      if [[ -e "${such_dirs%/}/${1}" ]]; then
-        success_counter=$((success_counter+1))
-        break
-      fi
-    done
-
-    if [[ "${success_counter}" -gt 0 ]]; then
-      sys_headers+=(["${1}"]="${2}")
-    else
-      sys_problem_headers+=(["${1}"]="${2}")
+    if [[ -e "${such_dirs%/}/${1}" ]]; then
+      success_counter=$((success_counter+1))
+      break
     fi
+  done
+
+  if [[ "${success_counter}" -gt 0 ]]; then
+    sys_headers+=(["${1}"]="${2}")
+  else
+    sys_problem_headers+=(["${1}"]="${2}")
+  fi
 
   return 0;
 }
@@ -291,28 +357,35 @@ find_prob_sys_headers(){
 find_prob_usr_headers(){
 
   # TO-DO [6]: Try and do this without find.
-
-  # Grep is tacked on because find will return 0 if search fails but did not
-  # error. So need something to generate a non-0 return to trigger else.
+  # grep is tacked on because find will return 0 if search fails but did not
+  # error. Need to generate a non-0 return to trigger else.
 
   if find "${2%/}" -name "${1}" -type f | grep . > /dev/null 2>&1; then
     usr_headers+=(["${1}"]="${2}")
-   else
+  else
    usr_problem_headers+=(["${1}"]="${2}")
   fi
 
   return 0;
 }
 
-print_some_stuff(){
+final_output(){
+
+  printf "Thanks for choosing aggregate.\n"
+  printf "Gathering system information\n"
+  printf "\n"
+  printf "\n"
+  printf "We found %s projects:\n" "${#all_projects[@]}"
+  printf "%s\n" "${all_projects[@]}"
+
+  return 0
+}
+
+debug_stuff(){
 
   echo "Full Projects:"
   echo "${!full_projects[@]}"
   echo "${full_projects[@]}"
-  echo "Header Locations:"
-  echo "${!header_locations[@]}"
-  echo "${header_locations[@]}"
-  echo ""
   echo "All Projects:"
   echo "${!all_projects[@]}"
   echo "${all_projects[@]}"
@@ -341,6 +414,13 @@ print_some_stuff(){
   echo "${!usr_problem_headers[@]}"
   echo "${usr_problem_headers[@]}"
   echo ""
+  echo "Compiler Includes:"
+  echo "${!compiler_includes[@]}"
+  echo "${compiler_includes[@]}"
+  echo ""
+  echo "Line Count"
+  echo "${line_count[@]}"
+  echo "${!line_count[@]}"
 
   return 0;
 }
@@ -348,7 +428,10 @@ print_some_stuff(){
 setup
 get_project_dirs
 get_files
-get_headers
+count_lines
 determine_compilers
-print_some_stuff
+get_compiler_includes
+get_headers
+final_output
+#debug_stuff
 exit 0

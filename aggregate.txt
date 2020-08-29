@@ -1,6 +1,5 @@
 
-
-                                         aggregate
+                                        aggregate
                                by Jacob Doherty, August 2020
 
                       Source: https://github.com/octopusnz/scripts/
@@ -40,16 +39,16 @@ The Advanced Bash-Scripting Guide: https://tldp.org/LDP/abs/html/index.html
 
 Some bash related stackoverflow threads we started (please up vote!):
 
-	https://stackoverflow.com/questions/63106381/
-	https://stackoverflow.com/questions/63006756/
+  https://stackoverflow.com/questions/63106381/
+  https://stackoverflow.com/questions/63006756/
 
 
 7. Contacts and profiles
 -----------------------------------
 
-GitHub: 			 https://github.com/octopusnz/
+GitHub:        https://github.com/octopusnz/
 stackoverflow: https://stackoverflow.com/users/8707397/
-Email: 				 dev@theflat.gen.nz.
+Email:         dev@theflat.gen.nz.
 
 
 8. License and copyright
