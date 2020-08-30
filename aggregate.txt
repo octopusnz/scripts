@@ -14,7 +14,10 @@
 0. Why does this exist?
 --------------------------
 
-The script is designed to provide a snapshot of projects in progress on a developers local machine. It will complete some simple checks on header files included to make sure they are accesible either via compiler include paths or in the local project directories.
+The script is designed to provide a snapshot of projects in progress on a developers
+local machine. It will complete some simple checks on header files included to make
+sure they are accesible either via compiler include paths or in the local project
+directories.
 
 1. Requirements
 -----------------------------------

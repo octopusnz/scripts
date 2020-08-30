@@ -1,14 +1,14 @@
 
-													 	     updateotron
-											   by Jacob Doherty, July 2020
+                                      updateotron
+                               by Jacob Doherty, August 2020
 
-                 Source: https://github.com/octopusnz/scripts/
+                      Source: https://github.com/octopusnz/scripts/
 
-                 Project files: updateotron.sh
-              							    updateotron.txt
+                      Project files: updateotron.sh
+                                     updateotron.txt
 
-               "It is what it is. And it isn't what it isn't."
-									 			  - Alexey "Tsoding" Kutepov
+                       "It is what it is. And it isn't what it isn't."
+                               - Alexey "Tsoding" Kutepov
 
 
 0. Why does this exist?
@@ -140,9 +140,9 @@ Some bash related stackoverflow threads we started (please up vote!):
 7. Contacts and profiles
 -----------------------------------
 
-GitHub: 			 https://github.com/octopusnz/
-stackoverflow: https://stackoverflow.com/users/8707397/
-Email: 				 dev@theflat.gen.nz.
+GitHub:         https://github.com/octopusnz/
+stackoverflow:  https://stackoverflow.com/users/8707397/
+Email:          dev@theflat.gen.nz.
 
 
 8. License and copyright
