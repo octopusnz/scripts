@@ -1,5 +1,5 @@
 
-                                        aggregate
+                                      aggregate
                                by Jacob Doherty, August 2020
 
                       Source: https://github.com/octopusnz/scripts/
@@ -14,20 +14,51 @@
 0. Why does this exist?
 --------------------------
 
+The script is designed to provide a snapshot of projects in progress on a developers local machine. It will complete some simple checks on header files included to make sure they are accesible either via compiler include paths or in the local project directories.
+
 1. Requirements
 -----------------------------------
+
+- Bash 4.3+
+- Projects that utilise a Makefile or similar containing a compiler definition
+- Languages that utilise either GCC and/or Clang compilers
+- find and grep
+
 
 2. Configuration
 -----------------------------------
 
+The following variables at the top of the script are configurable:
+
+compiler_string: String to search for in the project file that defines the compiler.
+file_ext:        File extension to search for in the project folders.
+lock_file:       Name of the lock file.
+lock_file_dir:   Directory lock file will be created in
+project_file:    The name of the project file that will be searched for the
+                 compiler string. Is case-insensitive.
+
+
 3. Exit codes and troubleshooting
 -----------------------------------
+
+The following exit codes are specified.
+This is based on: http://www.tldp.org/LDP/abs/html/exitcodes.html
+
+Exit 0 - Success.
+Exit 1 - Reserved for system.
+Exit 2 - Reserved for system.
+
 
 4. Style and syntax choices
 -----------------------------------
 
+
 5. Contributing and bug reporting
 -----------------------------------
+
+Pull requests and issues are welcome to be lodged via GitHub:
+
+  https://github.com/octopusnz/scripts/
 
 
 6. Thanks to

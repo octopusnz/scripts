@@ -15,6 +15,7 @@
 # TO-DO: [2]: Review rbv_reg regex
 # TO-DO: [3]: Support for other ruby env managers (RVM)
 # TO-DO: [4]: Go support
+# TO-DO: [5]: Should default ruby version get derived from env and not file?
 
 set -o errexit
 set -o nounset

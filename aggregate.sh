@@ -11,6 +11,9 @@
 #              Tracks your development files and dependencies.                 #
 #******************************************************************************#
 
+# TO-DO: [7]: Search through header files for other includes!
+# TO_DO: [8]: Create dual profect functionality i.e search bash script + c
+
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -90,6 +93,9 @@ setup(){
   return 0;
 }
 
+# Get all project dirs that contain the project file (i.e could be Makefile).
+# This find search starts from the location of the script downwards.
+
 get_project_dirs(){
 
   local such_projects
@@ -113,6 +119,8 @@ get_project_dirs(){
 
   return 0;
 }
+
+# Get all files and store in array against project based on file ext variable.
 
 get_files(){
 
@@ -141,6 +149,8 @@ get_files(){
   return 0;
 }
 
+# Count lines in all project files and store them against project.
+
 count_lines(){
 
   local countme
@@ -167,6 +177,9 @@ count_lines(){
 
   return 0;
 }
+
+# We grep the project file (ie could be a makefile) for the string (i.e could be
+# CC=) to get the specific compiler used in the project.
 
 determine_compilers(){
 
@@ -346,9 +359,9 @@ find_prob_sys_headers(){
   done
 
   if [[ "${success_counter}" -gt 0 ]]; then
-    sys_headers+=(["${1}"]="${2}")
+    sys_headers+=(["${2}"]="${1}")
   else
-    sys_problem_headers+=(["${1}"]="${2}")
+    sys_problem_headers+=(["${2}"]="${1}")
   fi
 
   return 0;
@@ -361,9 +374,9 @@ find_prob_usr_headers(){
   # error. Need to generate a non-0 return to trigger else.
 
   if find "${2%/}" -name "${1}" -type f | grep . > /dev/null 2>&1; then
-    usr_headers+=(["${1}"]="${2}")
+    usr_headers+=(["${2}"]="${1}")
   else
-   usr_problem_headers+=(["${1}"]="${2}")
+   usr_problem_headers+=(["${2}"]="${1}")
   fi
 
   return 0;
@@ -371,58 +384,56 @@ find_prob_usr_headers(){
 
 final_output(){
 
+  local such_projects
+
+  set +o nounset
+
   printf "Thanks for choosing aggregate.\n"
   printf "Gathering system information\n"
   printf "\n"
-  printf "\n"
   printf "We found %s projects:\n" "${#all_projects[@]}"
   printf "%s\n" "${all_projects[@]}"
+  printf "\n"
+  printf "Let's look at those projects individually:"
+  printf "\n"
+
+  for proj in "${all_projects[@]}"; do
+
+    printf "\n"
+    printf "%s looks like an interesting project! \n" "${proj}"
+    printf "It's using %s as a compiler.\n" "${comp_array[${proj}]}"
+    printf "It has these %s files: %s\n" "${file_ext}" "${my_codes[${proj}]}"
+    printf "Across those files you've written a total of %s lines of code\n" \
+        "${line_count[${proj}]}"
+    printf "\n"
+
+    if [[ -n "${sys_headers[$proj]}" ]]; then
+      printf "The following system header files were included: %s\n" \
+        "${sys_headers[$proj]}"
+    fi
+
+    if [[ -n "${sys_problem_headers[$proj]}" ]]; then
+      printf "We couldn't find the following system header files in the include "
+      printf "path for the compiler:\n"
+      printf "%s\n" "${sys_problem_headers[$proj]}"
+    fi
+
+    if [[ -n "${usr_headers[$proj]}" ]]; then
+      printf "The following user header files were included: %s\n" \
+        "${usr_headers[$proj]}"
+    fi
+
+    if [[ -n "${usr_problem_headers[$proj]}" ]]; then
+      printf "We couldn't find the following user header files in the project "
+      printf "directories:\n"
+      printf "%s\n" "${usr_problem_headers[$proj]}"
+    fi
+
+  done
+
+  set -o nounset
 
   return 0
-}
-
-debug_stuff(){
-
-  echo "Full Projects:"
-  echo "${!full_projects[@]}"
-  echo "${full_projects[@]}"
-  echo "All Projects:"
-  echo "${!all_projects[@]}"
-  echo "${all_projects[@]}"
-  echo ""
-  echo "C Files:"
-  echo "${!my_codes[@]}"
-  echo "${my_codes[@]}"
-  echo ""
-  echo "System Headers:"
-  echo "${!sys_headers[@]}"
-  echo "${sys_headers[@]}"
-  echo ""
-  echo "User Headers:"
-  echo "${!usr_headers[@]}"
-  echo "${usr_headers[@]}"
-  echo ""
-  echo "Compilers:"
-  echo "${!comp_array[@]}"
-  echo "${comp_array[@]}"
-  echo ""
-  echo "System Problem Headers:"
-  echo "${!sys_problem_headers[@]}"
-  echo "${sys_problem_headers[@]}"
-  echo ""
-  echo " User Problem Headers:"
-  echo "${!usr_problem_headers[@]}"
-  echo "${usr_problem_headers[@]}"
-  echo ""
-  echo "Compiler Includes:"
-  echo "${!compiler_includes[@]}"
-  echo "${compiler_includes[@]}"
-  echo ""
-  echo "Line Count"
-  echo "${line_count[@]}"
-  echo "${!line_count[@]}"
-
-  return 0;
 }
 
 setup
@@ -433,5 +444,4 @@ determine_compilers
 get_compiler_includes
 get_headers
 final_output
-#debug_stuff
 exit 0

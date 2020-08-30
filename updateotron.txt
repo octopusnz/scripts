@@ -14,12 +14,35 @@
 0. Why does this exist?
 --------------------------
 
+This script automates some common update tasks and allows for the simplification of
+managing multiple ruby projects with different versions.
+
 1. Requirements
 -----------------------------------
+
+- Bash 4.3+
+- rbenv and ruby-build
+- A configured ruby version with bundler installed
+- git
+
 
 2. Configuration
 -----------------------------------
 
+The following variables at the top of the script are configurable:
+
+git_dir:            The top directory that will be searched for projects that can be
+                    updated via git.
+lock_file_dir:      Directory lock file will be created in
+rbenv_dir:          rbenv install directory
+ruby_build_dir:     ruby-build install directory
+ruby_projects_dir:  The top directory that will be searched for ruby projects
+                    that can be updated via bundler
+script_dir:         This is used to get the directory the script is being run from
+gem_file:           Name of Gemfile to search for in ruby projects
+lock_file:          Name of the lock file.
+rbv_file:           Name of .ruby-version file to search for
+git_check:          Folder to check for .git project
 
 
 3. Exit codes and troubleshooting
@@ -96,6 +119,9 @@ Exit 10 - No valid rbenv versions.
 
 5. Contributing and bug reporting
 -----------------------------------
+
+Pull requests and issues are welcome to be lodged via GitHub:
+https://github.com/octopusnz/scripts/
 
 
 6. Thanks to
