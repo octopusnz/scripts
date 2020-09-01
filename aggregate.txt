@@ -1,14 +1,12 @@
 
-                                      aggregate
-                               by Jacob Doherty, August 2020
+                             aggregate
+                 by Jacob Doherty, August 2020
+                 Source: https://github.com/octopusnz/scripts/
+                 Project files: aggregate.sh
+                                aggregate.txt
 
-                      Source: https://github.com/octopusnz/scripts/
-
-                      Project files: aggregate.sh
-                                     aggregate.txt
-
-                       "It is what it is. And it isn't what it isn't."
-                               - Alexey "Tsoding" Kutepov
+            "It is what it is. And it isn't what it isn't."
+                  - Alexey "Tsoding" Kutepov
 
 
 0. Why does this exist?
