@@ -21,11 +21,11 @@ set -o pipefail
 file_ext="c"
 lock_file="/aggregate.lock"
 lock_file_dir="/tmp"
-project_file="Makefile"
-
+make_reg="makefile"
 include_reg_sys="^\\s*#\\s*include\\s*+[<][^>]*[>]\\s*"
 include_reg_usr="^\\s*#\\s*include\\s*+[\"][^\"]*[\"]\\s*"
 cc_reg="(^\\s*CC\\s*)(\\s*:\\s*)?(\\s*?\\s*)?(=)"
+clean_regex="<(.*?)>|\"(.*?)\""
 
 cleanup(){
 
@@ -100,10 +100,35 @@ setup(){
 get_project_dirs(){
 
   local such_projects
+  local such_files
+  local files
+  local files_array
 
+  files_array=()
   full_projects=()
 
-  mapfile -t full_projects < <(find . -type f -iregex ".*${project_file}")
+  # Get all dirs in path
+
+  shopt -s globstar
+
+  for files in **//*; do
+    if [[ -e "${files}" ]]; then
+      files_array+=(\.\/"${files}")
+    fi
+  done
+
+  shopt -u globstar
+
+  shopt -s nocasematch
+
+  for such_files in "${files_array[@]}"; do
+
+    if [[ "${such_files}" =~ ${make_reg} ]]; then
+      full_projects+=("${such_files}")
+    fi
+  done
+
+  shopt -u nocasematch
 
   if [[ "${#full_projects[@]}" -lt 1 ]]; then
     printf "We didn't find any matching projects. Nothing to do.\n"
@@ -126,21 +151,55 @@ get_project_dirs(){
 get_files(){
 
   local proj
-  local tmp_proj
+ # local tmp_proj
   declare -gA my_codes
 
   # TO-DO: [2]: If there are project dirs within dirs we get them all.
 
   for proj in "${all_projects[@]}"; do
 
-    tmp_proj=()
+    files_array=()
+    files=""
+    tmp_array=()
+    such_files=""
 
-    mapfile -t tmp_proj < <(find "${proj}" -type f -iregex ".*\.${file_ext}")
+    shopt -s globstar
 
-    if [[ "${#tmp_proj[@]}" -gt 0 ]]; then
-      my_codes+=(["${proj}"]="${tmp_proj[@]}")
+    for files in **/"${proj}"/*; do
+      if [[ -e "${files}" ]]; then
+        files_array+=("${files}")
+      fi
+    done
+
+    shopt -u globstar
+
+    shopt -s nocasematch
+
+    file_reg=".c"
+
+    for such_files in "${files_array[@]}"; do
+
+    if [[ "${such_files}" =~ ${file_reg} ]]; then
+      tmp_array+=("${such_files}")
     fi
+    done
+
+    shopt -u nocasematch
+
+    if [[ "${#tmp_array[@]}" -gt 0 ]]; then
+      my_codes+=(["${proj}"]="${tmp_array[@]}")
+    fi
+
   done
+
+  #  tmp_proj=()
+
+   # mapfile -t tmp_proj < <(find "${proj}" -type f -iregex ".*\.${file_ext}")
+
+  #  if [[ "${#tmp_proj[@]}" -gt 0 ]]; then
+  #    my_codes+=(["${proj}"]="${tmp_proj[@]}")
+  #  fi
+  #done
 
   if [[ "${#my_codes[@]}" -lt 1 ]]; then
     printf "We didn't find any matching files. Nothing to do."
@@ -228,6 +287,7 @@ get_compiler_includes(){
     tmp_var_2=""
     tmp_array=()
     tmp_array_2=()
+    such_locations=""
 
     # TO-DO: [4]: Put the compiler command line variables into a string
 
@@ -279,6 +339,7 @@ get_headers(){
   for such_projects in "${!my_codes[@]}"; do
 
     tmp_array=()
+    such_wisdom=""
 
     # TO-DO: [3]: Get rid of this IFS usage.
 
@@ -294,7 +355,12 @@ get_headers(){
 
 regex_headers(){
 
+  echo "REGEX HERE:"
+  echo "${1}"
+
   local make_line
+
+  make_line=""
 
   while read -r -t 3 make_line || [[ -n "${make_line}" ]]; do
 
@@ -314,11 +380,12 @@ input_clean(){
   local tmp_clean_1
   local tmp_clean_2
 
+  echo "INPUT CLEAN HERE:"
+  echo "${1}"
+
   cleaned_string=""
   tmp_clean_1=""
   tmp_clean_2=""
-
-  clean_regex="<(.*?)>|\"(.*?)\""
 
   tmp_clean_1="${1}"
 
@@ -347,6 +414,9 @@ find_prob_sys_headers(){
     printf "But we got %s instead.\n" "${#}"
     exit 7
   fi
+
+  echo "PROB SYS HEADERS HERE:"
+  echo "${1}"
 
   local comp_lookup
   local head_lookup
@@ -390,6 +460,9 @@ find_prob_usr_headers(){
   # TO-DO [6]: Try and do this without find.
   # grep is tacked on because find will return 0 if search fails but did not
   # error. Need to generate a non-0 return to trigger else.
+
+  echo "PROB USR HEADERS HERE:"
+  echo "${1}"
 
   if find "${2%/}" -name "${1}" -type f | grep . > /dev/null 2>&1; then
     usr_headers+=(["${2}"]="${1}")
