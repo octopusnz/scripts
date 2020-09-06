@@ -18,7 +18,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-compiler_string="CC="
 file_ext="c"
 lock_file="/aggregate.lock"
 lock_file_dir="/tmp"
@@ -26,8 +25,10 @@ project_file="Makefile"
 
 include_reg_sys="^\\s*#\\s*include\\s*+[<][^>]*[>]\\s*"
 include_reg_usr="^\\s*#\\s*include\\s*+[\"][^\"]*[\"]\\s*"
+cc_reg="(^\\s*CC\\s*)(\\s*:\\s*)?(\\s*?\\s*)?(=)"
 
 cleanup(){
+
 
   local exit_status
 
@@ -178,27 +179,34 @@ count_lines(){
   return 0;
 }
 
-# We grep the project file (ie could be a makefile) for the string (i.e could be
-# CC=) to get the specific compiler used in the project.
-
 determine_compilers(){
 
   local projects
-  local tmp_array
+  local cc_line
 
   declare -gA comp_array
 
   for projects in "${full_projects[@]}"; do
 
-    tmp_array=()
+    cc_line=""
 
-    mapfile -t tmp_array < <(grep -h "${compiler_string}" "${projects}")
+    while read -r -t 3 cc_line || [[ -n "${cc_line}" ]]; do
 
-    if [[ "${#tmp_array[@]}" -gt 0 ]]; then
-      projects="${projects%/*}/" &&
-      comp_array+=(["${projects}"]="${tmp_array[@]#"${compiler_string}"*}");
+    if [[ "${cc_line}" =~ ${cc_reg} ]]; then
+
+      projects="${projects%/*}/"
+      cc_line="${cc_line#*\=}"
+      comp_array+=(["${projects}"]="${cc_line}");
+      break
     fi
+
+    done < "${projects}"
   done
+
+  if [[ "${#comp_array[@]}" -lt 1 ]]; then
+    printf "Couldn't parse compilers, nothing to do."
+    exit 1
+  fi
 
   return 0;
 }
@@ -223,7 +231,7 @@ get_compiler_includes(){
 
     # TO-DO: [4]: Put the compiler command line variables into a string
 
-    tmp_var="$("${projects}" -E -x c - -v < /dev/null 2>&1)" &&
+    tmp_var="$(${projects} -E -x c - -v < /dev/null 2>&1)" &&
     tmp_var="${tmp_var#*#include <...> search starts here:}" &&
     tmp_var="${tmp_var%End of search list.*}" &&
     tmp_var="${tmp_var// /}"
@@ -239,6 +247,11 @@ get_compiler_includes(){
         tmp_array_2+=("${such_locations}")
       fi
     done
+
+    if [[ "${#tmp_array_2[@]}" -lt 1 ]]; then
+      printf "Couldn't parse system header locations from compiler"
+      exit 1
+    fi
 
     # Flatten back into a string
 
@@ -329,6 +342,12 @@ input_clean(){
 
 find_prob_sys_headers(){
 
+  if [[ "${#}" -ne 2 ]]; then
+    printf "[ERROR 7]: We expected 2 arguments to this function.\n"
+    printf "But we got %s instead.\n" "${#}"
+    exit 7
+  fi
+
   local comp_lookup
   local head_lookup
   local such_dirs
@@ -337,7 +356,6 @@ find_prob_sys_headers(){
   # Go back through and get the compiler string from this array. Based on the
   # project folder which was passed into this function.
 
-  comp_lookup=""
   comp_lookup="${comp_array["${2}"]}"
 
   # Need to build this array on the fly based on the string of dirs we
