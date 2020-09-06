@@ -119,9 +119,6 @@ get_project_dirs(){
     fi
   done
 
-  echo "SUCH DEPTH"
-  echo "${files_array[@]}"
-
   shopt -u globstar
 
   shopt -s nocasematch
@@ -196,15 +193,6 @@ get_files(){
     fi
 
   done
-
-  #  tmp_proj=()
-
-   # mapfile -t tmp_proj < <(find "${proj}" -type f -iregex ".*\.${file_ext}")
-
-  #  if [[ "${#tmp_proj[@]}" -gt 0 ]]; then
-  #    my_codes+=(["${proj}"]="${tmp_proj[@]}")
-  #  fi
-  #done
 
   if [[ "${#my_codes[@]}" -lt 1 ]]; then
     printf "We didn't find any matching files. Nothing to do."
@@ -355,7 +343,6 @@ get_headers(){
 
 regex_headers(){
 
-
   local make_line
   local such_loop
 
@@ -368,13 +355,8 @@ regex_headers(){
 
       if [[ "${make_line}" =~ ${include_reg_sys} ]]; then
           lol_array_sys+=("${BASH_REMATCH[0]}")
-
-        #input_clean "${BASH_REMATCH[0]}" "${1}" 0
-
       elif [[ "${make_line}" =~ ${include_reg_usr} ]]; then
           lol_array_usr+=("${BASH_REMATCH[0]}")
-
-        #input_clean "${BASH_REMATCH[0]}" "${1}" 1
       fi
     done < "${such_loop}"
   done
@@ -420,11 +402,8 @@ input_clean(){
 
       if [[ "${some_status}" -eq 0 ]]; then
         what_sys+=("${cleaned_string}")
-
-        #find_prob_sys_headers "${cleaned_string}" "${proj_name}"
       elif [[ "${some_status}" -eq 1 ]]; then
         what_usr+=("${cleaned_string}")
-        #find_prob_usr_headers "${cleaned_string}" "${proj_name}"
       fi
     fi
   done
@@ -436,7 +415,6 @@ input_clean(){
   if [[ "${#what_usr[@]}" -gt 0 ]]; then
     find_prob_usr_headers "${proj_name}" "${what_usr[@]}"
   fi
-
 
   return 0;
 }
@@ -522,12 +500,7 @@ find_prob_usr_headers(){
   bops_reg=""
   files=""
 
-  echo "PROJ NAME"
-  echo "${proj_name}"
-
   shopt -s globstar
-
-  #**/"${proj}"/*
 
   for files in "${proj_name}"**/*; do
     if [[ -f "${files}" ]]; then
@@ -535,19 +508,11 @@ find_prob_usr_headers(){
     fi
   done
 
-  echo "OK WE GOT THESE FILES:"
-  echo "${files_array[@]}"
-
   shopt -u globstar
 
   for such_bops in "${mmm_bop[@]}"; do
 
-    echo "THESE BOPS:"
-    echo "${such_bops}"
-
     bops_reg="${such_bops}"
-    echo "REG IS"
-    echo "${bops_reg}"
     success_counter=0
 
     for such_files in "${files_array[@]}"; do
