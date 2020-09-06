@@ -18,7 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-file_ext="c"
+
 lock_file="/aggregate.lock"
 lock_file_dir="/tmp"
 make_reg="makefile"
@@ -26,6 +26,8 @@ include_reg_sys="^\\s*#\\s*include\\s*+[<][^>]*[>]\\s*"
 include_reg_usr="^\\s*#\\s*include\\s*+[\"][^\"]*[\"]\\s*"
 cc_reg="(^\\s*CC\\s*)(\\s*:\\s*)?(\\s*?\\s*)?(=)"
 clean_regex="<(.*?)>|\"(.*?)\""
+file_ext_name="c"
+file_reg=".c"
 
 cleanup(){
 
@@ -113,9 +115,12 @@ get_project_dirs(){
 
   for files in **//*; do
     if [[ -e "${files}" ]]; then
-      files_array+=(\.\/"${files}")
+      files_array+=(\./"${files}")
     fi
   done
+
+  echo "SUCH DEPTH"
+  echo "${files_array[@]}"
 
   shopt -u globstar
 
@@ -165,8 +170,8 @@ get_files(){
 
     shopt -s globstar
 
-    for files in **/"${proj}"/*; do
-      if [[ -e "${files}" ]]; then
+    for files in "${proj}"**/*; do
+      if [[ -f "${files}" ]]; then
         files_array+=("${files}")
       fi
     done
@@ -328,8 +333,6 @@ get_compiler_includes(){
 get_headers(){
 
   local such_projects
-  local such_wisdom
-  local tmp_array
 
   declare -gA usr_problem_headers
   declare -gA sys_problem_headers
@@ -338,39 +341,51 @@ get_headers(){
 
   for such_projects in "${!my_codes[@]}"; do
 
-    tmp_array=()
-    such_wisdom=""
+    lol_array=()
 
     # TO-DO: [3]: Get rid of this IFS usage.
 
-    IFS=' ' read -r -t 3 -a tmp_array <<< "${my_codes["${such_projects}"]}"
-
-    for such_wisdom in "${tmp_array[@]}"; do
-      regex_headers "${such_wisdom}" "${such_projects}"
-    done
+    IFS=' ' read -r -t 3 -a lol_array <<< "${my_codes["${such_projects}"]}"
+    regex_headers "${such_projects}"
   done
+
 
   return 0;
 }
 
 regex_headers(){
 
-  echo "REGEX HERE:"
-  echo "${1}"
 
   local make_line
+  local such_loop
 
-  make_line=""
+  lol_array_sys=()
+  lol_array_usr=()
 
-  while read -r -t 3 make_line || [[ -n "${make_line}" ]]; do
+  for such_loop in "${lol_array[@]}"; do
 
-    if [[ "${make_line}" =~ ${include_reg_sys} ]]; then
-      input_clean "${BASH_REMATCH[0]}" "${2}" 0
+    while read -r -t 3 make_line || [[ -n "${make_line}" ]]; do
 
-    elif [[ "${make_line}" =~ ${include_reg_usr} ]]; then
-      input_clean "${BASH_REMATCH[0]}" "${2}" 1
-    fi
-  done < "${1}"
+      if [[ "${make_line}" =~ ${include_reg_sys} ]]; then
+          lol_array_sys+=("${BASH_REMATCH[0]}")
+
+        #input_clean "${BASH_REMATCH[0]}" "${1}" 0
+
+      elif [[ "${make_line}" =~ ${include_reg_usr} ]]; then
+          lol_array_usr+=("${BASH_REMATCH[0]}")
+
+        #input_clean "${BASH_REMATCH[0]}" "${1}" 1
+      fi
+    done < "${such_loop}"
+  done
+
+  if [[ "${#lol_array_sys[@]}" -gt 0 ]]; then
+    input_clean "${1}" 0 "${lol_array_sys[@]}"
+  fi
+
+  if [[ "${#lol_array_usr[@]}" -gt 0 ]]; then
+    input_clean "${1}" 1 "${lol_array_usr[@]}"
+  fi
 
   return 0;
 }
@@ -380,25 +395,48 @@ input_clean(){
   local tmp_clean_1
   local tmp_clean_2
 
-  echo "INPUT CLEAN HERE:"
-  echo "${1}"
+  what=()
+  lols=""
+  proj_name=""
+  some_status=""
+  proj_name="${1}"
+  some_status="${2}"
+  shift 2
+  what=("$@")
 
-  cleaned_string=""
-  tmp_clean_1=""
-  tmp_clean_2=""
+  what_sys=()
+  what_usr=()
 
-  tmp_clean_1="${1}"
+  for lols in "${what[@]}"; do
 
-  if [[ "${tmp_clean_1}" =~ ${clean_regex} ]]; then
-    tmp_clean_2="${BASH_REMATCH[0]}" &&
-    cleaned_string="${tmp_clean_2//[^0-9a-zA-Z\.\-\_]/}";
+    cleaned_string=""
+    tmp_clean_1=""
+    tmp_clean_2=""
+    tmp_clean_1="${lols}"
 
-    if [[ "${3}" -eq 0 ]]; then
-      find_prob_sys_headers "${cleaned_string}" "${2}"
-    elif [[ "${3}" -eq 1 ]]; then
-      find_prob_usr_headers "${cleaned_string}" "${2}"
+    if [[ "${tmp_clean_1}" =~ ${clean_regex} ]]; then
+      tmp_clean_2="${BASH_REMATCH[0]}" &&
+      cleaned_string="${tmp_clean_2//[^0-9a-zA-Z\.\-\_]/}";
+
+      if [[ "${some_status}" -eq 0 ]]; then
+        what_sys+=("${cleaned_string}")
+
+        #find_prob_sys_headers "${cleaned_string}" "${proj_name}"
+      elif [[ "${some_status}" -eq 1 ]]; then
+        what_usr+=("${cleaned_string}")
+        #find_prob_usr_headers "${cleaned_string}" "${proj_name}"
+      fi
     fi
+  done
+
+  if [[ "${#what_sys[@]}" -gt 0 ]]; then
+    find_prob_sys_headers "${proj_name}" "${what_sys[@]}"
   fi
+
+  if [[ "${#what_usr[@]}" -gt 0 ]]; then
+    find_prob_usr_headers "${proj_name}" "${what_usr[@]}"
+  fi
+
 
   return 0;
 }
@@ -409,24 +447,23 @@ input_clean(){
 
 find_prob_sys_headers(){
 
-  if [[ "${#}" -ne 2 ]]; then
-    printf "[ERROR 7]: We expected 2 arguments to this function.\n"
-    printf "But we got %s instead.\n" "${#}"
-    exit 7
-  fi
-
-  echo "PROB SYS HEADERS HERE:"
-  echo "${1}"
-
   local comp_lookup
   local head_lookup
   local such_dirs
   local success_counter
 
+  proj_name=""
+  proj_name="${1}"
+  shift
+  oh_yeah=("$@")
+  tmp_sys_headers=()
+  tmp_sys_problem_headers=()
+
+
   # Go back through and get the compiler string from this array. Based on the
   # project folder which was passed into this function.
 
-  comp_lookup="${comp_array["${2}"]}"
+  comp_lookup="${comp_array["${proj_name}"]}"
 
   # Need to build this array on the fly based on the string of dirs we
   # have in another array.
@@ -436,20 +473,31 @@ find_prob_sys_headers(){
 
   success_counter=0
 
-  for such_dirs in "${head_lookup[@]}"; do
+  for yeahs in "${oh_yeah[@]}"; do
+
+    for such_dirs in "${head_lookup[@]}"; do
 
     # TO-DO: [5]: Decide whether we want to count all successes
 
-    if [[ -e "${such_dirs%/}/${1}" ]]; then
-      success_counter=$((success_counter+1))
-      break
+      if [[ -f "${such_dirs%/}/${yeahs}" ]]; then
+        success_counter=$((success_counter+1))
+        break
+      fi
+    done
+
+    if [[ "${success_counter}" -gt 0 ]]; then
+      tmp_sys_headers+=("${yeahs}")
+    else
+      tmp_sys_problem_headers+=("${yeahs}")
     fi
   done
 
-  if [[ "${success_counter}" -gt 0 ]]; then
-    sys_headers+=(["${2}"]="${1}")
-  else
-    sys_problem_headers+=(["${2}"]="${1}")
+  if [[ "${#tmp_sys_headers[@]}" -gt 0 ]]; then
+      sys_headers+=(["${proj_name}"]="${tmp_sys_headers[@]}")
+  fi
+
+  if [[ "${#tmp_sys_problem_headers[@]}" -gt 0 ]]; then
+      sys_problem_headers+=(["${proj_name}"]="${tmp_sys_problem_headers[@]}")
   fi
 
   return 0;
@@ -460,14 +508,68 @@ find_prob_usr_headers(){
   # TO-DO [6]: Try and do this without find.
   # grep is tacked on because find will return 0 if search fails but did not
   # error. Need to generate a non-0 return to trigger else.
+  proj_name=""
+  mmm_bop=()
+  proj_name="${1}"
+  shift
+  mmm_bop=("$@")
 
-  echo "PROB USR HEADERS HERE:"
-  echo "${1}"
+  tmp_usr_headers=()
+  tmp_usr_problem_headers=()
+  files_array=()
+  such_files=""
+  such_bops=""
+  bops_reg=""
+  files=""
 
-  if find "${2%/}" -name "${1}" -type f | grep . > /dev/null 2>&1; then
-    usr_headers+=(["${2}"]="${1}")
-  else
-   usr_problem_headers+=(["${2}"]="${1}")
+  echo "PROJ NAME"
+  echo "${proj_name}"
+
+  shopt -s globstar
+
+  #**/"${proj}"/*
+
+  for files in "${proj_name}"**/*; do
+    if [[ -f "${files}" ]]; then
+      files_array+=("${files}")
+    fi
+  done
+
+  echo "OK WE GOT THESE FILES:"
+  echo "${files_array[@]}"
+
+  shopt -u globstar
+
+  for such_bops in "${mmm_bop[@]}"; do
+
+    echo "THESE BOPS:"
+    echo "${such_bops}"
+
+    bops_reg="${such_bops}"
+    echo "REG IS"
+    echo "${bops_reg}"
+    success_counter=0
+
+    for such_files in "${files_array[@]}"; do
+
+      if [[ "${such_files}" =~ ${bops_reg} ]]; then
+        tmp_usr_headers+=("${such_bops}")
+        success_counter=$(("${success_counter}" +1))
+        break
+      fi
+    done
+
+    if [[ "${success_counter}" -eq 0 ]]; then
+      tmp_usr_problem_headers+=("${such_bops}")
+    fi
+  done
+
+  if [[ "${#tmp_usr_headers[@]}" -gt 0 ]]; then
+      usr_headers+=(["${proj_name}"]="${tmp_usr_headers[@]}")
+  fi
+
+  if [[ "${#tmp_usr_problem_headers[@]}" -gt 0 ]]; then
+      usr_problem_headers+=(["${proj_name}"]="${tmp_usr_problem_headers[@]}")
   fi
 
   return 0;
@@ -493,7 +595,7 @@ final_output(){
     printf "\n"
     printf "%s looks like an interesting project! \n" "${proj}"
     printf "It's using %s as a compiler.\n" "${comp_array[${proj}]}"
-    printf "It has these %s files: %s\n" "${file_ext}" "${my_codes[${proj}]}"
+    printf "It has these %s files: %s\n" "${file_ext_name}" "${my_codes[${proj}]}"
     printf "Across those files you've written a total of %s lines of code\n" \
         "${line_count[${proj}]}"
     printf "\n"
@@ -505,7 +607,7 @@ final_output(){
 
     if [[ -n "${sys_problem_headers[$proj]}" ]]; then
       printf "We couldn't find the following system header files in the include "
-      printf "path for the compiler:\n"
+      printf "path for the compiler:"
       printf "%s\n" "${sys_problem_headers[$proj]}"
     fi
 

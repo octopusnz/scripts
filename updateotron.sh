@@ -107,7 +107,7 @@ file_dir_check(){
 
     if [[ -n "${tests}" ]]; then
 
-      if [[ -d "${tests}" ]] || [[ -e "${tests}" ]]; then
+      if [[ -d "${tests}" ]] || [[ -f "${tests}" ]]; then
         check_failure=0
       else
         check_failure=1
