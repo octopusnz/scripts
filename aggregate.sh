@@ -114,7 +114,7 @@ get_project_dirs(){
   shopt -s globstar
 
   for files in **//*; do
-    if [[ -e "${files}" ]]; then
+    if [[ -f "${files}" ]]; then
       files_array+=(\./"${files}")
     fi
   done
@@ -483,9 +483,6 @@ find_prob_sys_headers(){
 
 find_prob_usr_headers(){
 
-  # TO-DO [6]: Try and do this without find.
-  # grep is tacked on because find will return 0 if search fails but did not
-  # error. Need to generate a non-0 return to trigger else.
   proj_name=""
   mmm_bop=()
   proj_name="${1}"
