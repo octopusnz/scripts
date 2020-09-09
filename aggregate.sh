@@ -24,7 +24,7 @@ lock_file="/aggregate.lock"
 lock_file_dir="/tmp"
 make_reg="makefile"
 file_ext_name="c"
-file_reg=".c"
+file_reg="^.*\.(c)$"
 
 # Regex used in functions
 
@@ -194,7 +194,8 @@ get_files(){
 
     for files in "${proj}"**/*; do
       if [[ -f "${files}" ]]; then
-        files_array+=("${files}")
+        tmp_array+=("${files}")
+
       fi
     done
 
@@ -202,17 +203,18 @@ get_files(){
 
     shopt -s nocasematch
 
-    for such_files in "${files_array[@]}"; do
+    for such_files in "${tmp_array[@]}"; do
 
     if [[ "${such_files}" =~ ${file_reg} ]]; then
-      tmp_array+=("${such_files}")
+      files_array+=("${such_files}")
+
     fi
     done
 
     shopt -u nocasematch
 
-    if [[ "${#tmp_array[@]}" -gt 0 ]]; then
-      my_codes+=(["${proj}"]="${tmp_array[@]}")
+    if [[ "${#files_array[@]}" -gt 0 ]]; then
+      my_codes+=(["${proj}"]="${files_array[@]}")
     fi
 
   done
@@ -686,19 +688,20 @@ final_output(){
     printf "\n"
     printf "%s looks like an interesting project! \n" "${proj}"
     printf "It's using %s as a compiler.\n" "${comp_array[${proj}]}"
-    printf "It has these %s files: %s\n" "${file_ext_name}" "${my_codes[${proj}]}"
-    printf "Across those files you've written a total of %s lines of code\n" \
+    printf "It has these %s files: %s\n" "${file_ext_name}"\
+      "${my_codes[${proj}]}"
+    printf "Across those files you've written a total of %s lines of code\n"\
         "${line_count[${proj}]}"
     printf "\n"
 
     if [[ -n "${sys_headers[$proj]}" ]]; then
-      printf "The following system header files were included: %s\n" \
+      printf "The following system header files were included: %s\n"\
         "${sys_headers[$proj]}"
     fi
 
     if [[ -n "${sys_problem_headers[$proj]}" ]]; then
-      printf "We couldn't find the following system header files in the include "
-      printf "path for the compiler:"
+      printf "We couldn't find the following system header files in the"
+      printf " include path for the compiler:\n"
       printf "%s\n" "${sys_problem_headers[$proj]}"
     fi
 

@@ -38,6 +38,39 @@ rbv_file='/.ruby-version'
 git_check='/.git'
 rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
 
+cleanup(){
+
+  local exit_status
+
+  # This needs to be first so it captures the exit status from the cmd
+  # that triggered the trap.
+
+  exit_status=""
+  exit_status="${?}"
+
+  # Unset trap to prevent loops or double calling the cleanup() function.
+
+  trap '' ERR EXIT SIGHUP SIGINT SIGTERM
+
+  printf "\n"
+  printf "5. Cleaning up and exiting.\n"
+
+  if ! rm "${lock_file_dir%/}${lock_file}"; then
+    printf "[WARNING]: There was an error and we're not sure what happened.\n"
+    printf "We tried to remove this file here: %s%s\n" "${lock_file_dir%/}" \
+      "${lock_file}"
+    printf "We'll continue to attempt to exit.\n"
+  else
+    printf "Removing lock file\n"
+  fi
+
+  printf "Exit code is: %s\n" "${exit_status}"
+
+  return 0;
+}
+
+trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
+
 # We handle logic errors from throughout the script here. We expect two
 # arguments when this gets called. 1 is the contents of the variable that
 # triggered the error. 2 is the name of the variable. A number (i.e 1 or 2)
@@ -56,10 +89,14 @@ logic_error(){
   printf "The variable in question is: %s and its value was: %s\n" \
       "${2}" "${1}";
 
+  set +o nounset
+
   if [[ -n "${BASH_LINENO[0]}" ]] && [[ -n "${FUNCNAME[1]}" ]]; then
     printf "We were in the %s() function at around line %s\n" \
       "${FUNCNAME[1]}" "${BASH_LINENO[0]}";
   fi
+
+  set -o nounset
 
   exit 9
 
@@ -75,7 +112,9 @@ input_clean(){
   local tmp_clean_1
   local tmp_clean_2
 
-  cleaned_var=''
+  tmp_clean_1=""
+  tmp_clean_2=""
+  cleaned_var=""
 
   if [[ "${#}" -ne 1 ]]; then
     printf "[ERROR 7]: We expected 1 argument to the input_clean() function.\n"
@@ -92,16 +131,19 @@ input_clean(){
 
 file_dir_check(){
 
-  local tests
-
-  check_failure=''
-
   if [[ "${#}" -lt 1 ]]; then
     printf "[ERROR 7]: We expected at least 1 argument to the dir_checker()\n"
     printf "function.\n"
     printf "But we got %s instead.\n" "${#}"
     exit 7
   fi
+
+  local tests
+
+  tests=""
+  check_failure=0
+
+  set +o nounset
 
   for tests in "${@}"; do
 
@@ -120,51 +162,10 @@ file_dir_check(){
     fi
   done
 
-  return 0;
-}
-
-cleanup(){
-
-  local exit_status
-
-  # This needs to be first so it captures the exit status from the cmd
-  # that triggered the trap.
-
-  exit_status="${?}"
-
-  # Unset trap to prevent loops or double calling the cleanup() function.
-
-  trap '' ERR EXIT SIGHUP SIGINT SIGTERM
-
-  printf "\n"
-  printf "5. Cleaning up and exiting.\n"
-
-  printf "[MSG]: Unsetting exported variables.\n"
-  unset BUNDLE_GEMFILE
-  unset RBENV_VERSION
-
-  file_dir_check "${lock_file_dir%/}${lock_file}"
-
-  if [[ "${check_failure}" -eq 1 ]]; then
-    printf "[WARNING]: Lock file does not exist and was not deleted.\n"
-    printf "We tried here: %s%s\n" "${lock_file_dir%/}" "${lock_file}"
-  elif [[ "${check_failure}" -eq 0 ]]; then
-    printf "[MSG]: Removing lock file.\n"
-    rm "${lock_file_dir%/}${lock_file}"
-  else
-    printf "[WARNING]: There was an error and we're not sure what happened.\n"
-    printf "We tried to remove this file here: %s%s\n" "${lock_file_dir%/}" \
-      "${lock_file}"
-    printf "We'll continue to attempt to exit.\n"
-  fi
-
-  printf "\n"
-  printf "Exit code is: %s\n" "${exit_status}"
+  set -o nounset
 
   return 0;
 }
-
-trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 
 # This sanitize function is trying to parse the .ruby-version file and
 # make sure we have a sane string to set. It gets called from within the
@@ -175,26 +176,28 @@ trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 
 sanitize(){
 
-  local rbv_line
-  local reg_matches
-  local such_versions
-  local tmp_ruby_version
-
   if [[ "${#}" -ne 2 ]]; then
     printf "[ERROR 7]: We expected 2 arguments to the sanitize() function.\n"
     printf "But we got %s instead.\n" "${#}"
     exit 7
   fi
 
+  local rbv_line
+  local reg_matches
+  local such_versions
+  local tmp_ruby_version
+
+  tmp_ruby_version=""
+  such_versions=""
+  rbv_line=""
   reg_matches=0
 
-  # Complains if this doesn't exist due to the if comparison further down.
-
-  tmp_ruby_version=''
 
   # || [[ -n $rbv_line ]] prevents the last line from being ignored if it
   # doesn't end with a \n (since read returns a non-zero exit code when it
   # encounters EOF).
+
+  set +o nounset
 
   while read -r -t 3 rbv_line || [[ -n "${rbv_line}" ]]; do
 
@@ -209,6 +212,8 @@ sanitize(){
       break
     fi
   done < "${1%/}${rbv_file}"
+
+  set -o nounset
 
   # We compare and contrast with the available verisons rbenv knows about
 
@@ -448,7 +453,11 @@ ruby_curation(){
 
   mapfile -t rbenv_map < <(rbenv versions)
 
+  set +o nounset
+
    for poss_versions in "${rbenv_map[@]}"; do
+
+    cleaned_var=""
 
     if [[ "${poss_versions}" =~ ${rbv_reg} ]]; then
       input_clean "${BASH_REMATCH[0]}"
@@ -460,6 +469,8 @@ ruby_curation(){
       fi
     fi
    done
+
+  set -o nounset
 
   # If we couldn't get any sensible versions out of rbenv we'll error.
 
