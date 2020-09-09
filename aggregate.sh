@@ -18,25 +18,29 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# User editable config options. See aggregate.txt for more information.
 
 lock_file="/aggregate.lock"
 lock_file_dir="/tmp"
 make_reg="makefile"
+file_ext_name="c"
+file_reg=".c"
+
+# Regex used in functions
+
 include_reg_sys="^\\s*#\\s*include\\s*+[<][^>]*[>]\\s*"
 include_reg_usr="^\\s*#\\s*include\\s*+[\"][^\"]*[\"]\\s*"
 cc_reg="(^\\s*CC\\s*)(\\s*:\\s*)?(\\s*?\\s*)?(=)"
 clean_regex="<(.*?)>|\"(.*?)\""
-file_ext_name="c"
-file_reg=".c"
 
 cleanup(){
-
 
   local exit_status
 
   # This needs to be first so it captures the exit status from the cmd
   # that triggered the trap.
 
+  exit_status=""
   exit_status="${?}"
 
   # Unset trap to prevent loops or double calling the cleanup() function.
@@ -97,7 +101,7 @@ setup(){
 }
 
 # Get all project dirs that contain the project file (i.e could be Makefile).
-# This find search starts from the location of the script downwards.
+# The search is recursive from the dir the script was executed from.
 
 get_project_dirs(){
 
@@ -106,6 +110,9 @@ get_project_dirs(){
   local files
   local files_array
 
+  such_projects=""
+  such_files=""
+  files=""
   files_array=()
   full_projects=()
 
@@ -120,6 +127,8 @@ get_project_dirs(){
   done
 
   shopt -u globstar
+
+  # Will match case in-sensitive i.e makefile, Makefile, MaKeFiLe
 
   shopt -s nocasematch
 
@@ -145,6 +154,15 @@ get_project_dirs(){
     all_projects+=("${such_projects}");
   done
 
+  # Will probably blow up before this due to above commands failing but just
+  # in case ...
+
+  if [[ "${#all_projects[@]}" -lt 1 ]]; then
+    printf "We couldn't parse the projects dirs. Nothing to do.\n"
+    printf "We got these: %s" "${full_projects[@]}"
+    exit 0
+  fi
+
   return 0;
 }
 
@@ -153,10 +171,17 @@ get_project_dirs(){
 get_files(){
 
   local proj
- # local tmp_proj
+  local files_array
+  local files
+  local tmp_array
+  local such_files
+
   declare -gA my_codes
 
-  # TO-DO: [2]: If there are project dirs within dirs we get them all.
+  proj=""
+  my_codes=()
+
+  # TO-DO: If there are project dirs within dirs we get them all.
 
   for proj in "${all_projects[@]}"; do
 
@@ -176,8 +201,6 @@ get_files(){
     shopt -u globstar
 
     shopt -s nocasematch
-
-    file_reg=".c"
 
     for such_files in "${files_array[@]}"; do
 
@@ -213,9 +236,14 @@ count_lines(){
 
   declare -gA line_count
 
+  such_projects=""
+  line_count=()
+  tmp_array=()
+
   for such_projects in "${!my_codes[@]}"; do
 
     countme=0
+    many_projects=""
 
     IFS=' ' read -r -t 3 -a tmp_array <<< "${my_codes["${such_projects}"]}"
 
@@ -228,6 +256,9 @@ count_lines(){
     done
   done
 
+  # TO-DO: Maybe consider removing the project from the project array if it
+  # has no files with lines ? Depends on final output.
+
   return 0;
 }
 
@@ -237,6 +268,9 @@ determine_compilers(){
   local cc_line
 
   declare -gA comp_array
+
+  projects=""
+  comp_array=()
 
   for projects in "${full_projects[@]}"; do
 
@@ -274,6 +308,9 @@ get_compiler_includes(){
 
   declare -gA compiler_includes
 
+  projects=""
+  compiler_includes=()
+
   for projects in "${comp_array[@]}"; do
 
     tmp_var=""
@@ -282,16 +319,24 @@ get_compiler_includes(){
     tmp_array_2=()
     such_locations=""
 
-    # TO-DO: [4]: Put the compiler command line variables into a string
+    # TO-DO: Put the compiler command line variables into a string
+    #        Maybe look at get opts?
 
     tmp_var="$(${projects} -E -x c - -v < /dev/null 2>&1)" &&
     tmp_var="${tmp_var#*#include <...> search starts here:}" &&
     tmp_var="${tmp_var%End of search list.*}" &&
     tmp_var="${tmp_var// /}"
 
-    #TO-DO [6]: Look at read-array command line args
+    #TO-DO: Look at read-array command line args
 
     readarray -t tmp_array <<< "${tmp_var}"
+
+    #TO-DO: Probably look at just removing project rather than error out
+
+    if [[ "${#tmp_array[@]}" -lt 1 ]]; then
+      printf "Couldn't parse system header locations from compiler"
+      exit 1
+    fi
 
     # Check if dir exists. This will also get rid of whitespace fields.
 
@@ -321,52 +366,72 @@ get_compiler_includes(){
 get_headers(){
 
   local such_projects
+  local raw_headers
 
   declare -gA usr_problem_headers
   declare -gA sys_problem_headers
   declare -gA sys_headers
   declare -gA usr_headers
 
+  usr_problem_headers=()
+  sys_problem_headers=()
+  sys_headers=()
+  usr_headers=()
+  such_projects=""
+
   for such_projects in "${!my_codes[@]}"; do
 
-    lol_array=()
+    raw_headers=()
 
-    # TO-DO: [3]: Get rid of this IFS usage.
+    # TO-DO: Try to get rid of this IFS usage
 
-    IFS=' ' read -r -t 3 -a lol_array <<< "${my_codes["${such_projects}"]}"
+    IFS=' ' read -r -t 3 -a raw_headers <<< "${my_codes["${such_projects}"]}"
     regex_headers "${such_projects}"
   done
-
 
   return 0;
 }
 
 regex_headers(){
 
+  if [[ "${#}" -ne 1 ]]; then
+    printf "[ERROR]: We expected 1 argument to the regex_headers() function.\n"
+    printf "But we got %s instead.\n" "${#}"
+    exit 1
+  fi
+
   local make_line
   local such_loop
+  local array_sys
+  local array_usr
 
-  lol_array_sys=()
-  lol_array_usr=()
+  array_sys=()
+  array_usr=()
+  such_loop=""
 
-  for such_loop in "${lol_array[@]}"; do
+  for such_loop in "${raw_headers[@]}"; do
+
+    make_line=""
+
+    #TO-DO: Investigate whether the OR "-n" here needs nounsetmatch to be
+    #       temporarily disabled.
 
     while read -r -t 3 make_line || [[ -n "${make_line}" ]]; do
 
       if [[ "${make_line}" =~ ${include_reg_sys} ]]; then
-          lol_array_sys+=("${BASH_REMATCH[0]}")
+          array_sys+=("${BASH_REMATCH[0]}")
       elif [[ "${make_line}" =~ ${include_reg_usr} ]]; then
-          lol_array_usr+=("${BASH_REMATCH[0]}")
+          array_usr+=("${BASH_REMATCH[0]}")
       fi
     done < "${such_loop}"
   done
 
-  if [[ "${#lol_array_sys[@]}" -gt 0 ]]; then
-    input_clean "${1}" 0 "${lol_array_sys[@]}"
+  if [[ "${#array_sys[@]}" -gt 0 ]]; then
+    input_clean "${1}" 0 "${array_sys[@]}"
   fi
 
-  if [[ "${#lol_array_usr[@]}" -gt 0 ]]; then
-    input_clean "${1}" 1 "${lol_array_usr[@]}"
+  if [[ "${#array_usr[@]}" -gt 0 ]]; then
+    input_clean "${1}" 1 "${array_usr[@]}"
   fi
 
   return 0;
@@ -374,46 +439,74 @@ regex_headers(){
 
 input_clean(){
 
+  # TO-DO: Need to investigate this a bit. I think it's passing all the indicies
+  # of the array as individual parameters? i.e if 2 are in the array it will
+  # send 4 params in total from regex_headers.
+
+  if [[ "${#}" -lt 3 ]]; then
+    printf "[ERROR]: We expected at least 3 arguments to the regex_headers()\
+           function.\n"
+    printf "But we got %s instead.\n" "${#}"
+    exit 1
+  fi
+
   local tmp_clean_1
   local tmp_clean_2
+  local header_type
+  local tmp_array
+  local such_headers
+  local cleaned_string
+  local input_tmp_sys
+  local input_tmp_usr
+  local input_proj_name
 
-  what=()
-  lols=""
-  proj_name=""
-  some_status=""
-  proj_name="${1}"
-  some_status="${2}"
+  tmp_array=()
+  such_headers=""
+  input_tmp_sys=()
+  input_tmp_usr=()
+  input_proj_name=""
+  header_type=""
+
+ # Get and set the parameters passed from the regex_headers() function.
+
+  input_proj_name="${1}"
+  header_type="${2}"
   shift 2
-  what=("$@")
+  tmp_array=("$@")
 
-  what_sys=()
-  what_usr=()
+  # Clean each header string 1-1 then put it in the appropriate array.
 
-  for lols in "${what[@]}"; do
+  for such_headers in "${tmp_array[@]}"; do
 
     cleaned_string=""
     tmp_clean_1=""
     tmp_clean_2=""
-    tmp_clean_1="${lols}"
+    tmp_clean_1="${such_headers}"
 
     if [[ "${tmp_clean_1}" =~ ${clean_regex} ]]; then
       tmp_clean_2="${BASH_REMATCH[0]}" &&
       cleaned_string="${tmp_clean_2//[^0-9a-zA-Z\.\-\_]/}";
 
-      if [[ "${some_status}" -eq 0 ]]; then
-        what_sys+=("${cleaned_string}")
-      elif [[ "${some_status}" -eq 1 ]]; then
-        what_usr+=("${cleaned_string}")
+    # TO-DO: Maybe need to think about another check here that the above
+    #        succeeded. It will likely blow up before due to command failing.
+
+      if [[ "${header_type}" -eq 0 ]]; then
+        input_tmp_sys+=("${cleaned_string}")
+      elif [[ "${header_type}" -eq 1 ]]; then
+        input_tmp_usr+=("${cleaned_string}")
       fi
     fi
   done
 
-  if [[ "${#what_sys[@]}" -gt 0 ]]; then
-    find_prob_sys_headers "${proj_name}" "${what_sys[@]}"
+  # Send the arrays of cleaned strings on their way to their final function
+  # to check if they exist.
+
+  if [[ "${#input_tmp_sys[@]}" -gt 0 ]]; then
+    find_prob_sys_headers "${input_proj_name}" "${input_tmp_sys[@]}"
   fi
 
-  if [[ "${#what_usr[@]}" -gt 0 ]]; then
-    find_prob_usr_headers "${proj_name}" "${what_usr[@]}"
+  if [[ "${#input_tmp_usr[@]}" -gt 0 ]]; then
+    find_prob_usr_headers "${input_proj_name}" "${input_tmp_usr[@]}"
   fi
 
   return 0;
@@ -425,18 +518,32 @@ input_clean(){
 
 find_prob_sys_headers(){
 
+  if [[ "${#}" -lt 2 ]]; then
+    printf "[ERROR]: We expected at least 2 arguments to the"
+    printf "find_prob_sys_headers()function.\n"
+    printf "But we got %s instead.\n" "${#}"
+    exit 1
+  fi
+
   local comp_lookup
   local head_lookup
   local such_dirs
   local success_counter
+  local proj_name
+  local tmp_array
+  local headers
+  local tmp_sys_headers
+  local tmp_sys_problem_headers
 
   proj_name=""
-  proj_name="${1}"
-  shift
-  oh_yeah=("$@")
+  headers=""
+  tmp_array=()
   tmp_sys_headers=()
   tmp_sys_problem_headers=()
 
+  proj_name="${1}"
+  shift
+  tmp_array=("$@")
 
   # Go back through and get the compiler string from this array. Based on the
   # project folder which was passed into this function.
@@ -451,22 +558,24 @@ find_prob_sys_headers(){
 
   success_counter=0
 
-  for yeahs in "${oh_yeah[@]}"; do
+  for headers in "${tmp_array[@]}"; do
+
+    such_dirs=""
 
     for such_dirs in "${head_lookup[@]}"; do
 
     # TO-DO: [5]: Decide whether we want to count all successes
 
-      if [[ -f "${such_dirs%/}/${yeahs}" ]]; then
+      if [[ -f "${such_dirs%/}/${headers}" ]]; then
         success_counter=$((success_counter+1))
         break
       fi
     done
 
     if [[ "${success_counter}" -gt 0 ]]; then
-      tmp_sys_headers+=("${yeahs}")
+      tmp_sys_headers+=("${headers}")
     else
-      tmp_sys_problem_headers+=("${yeahs}")
+      tmp_sys_problem_headers+=("${headers}")
     fi
   done
 
@@ -483,19 +592,37 @@ find_prob_sys_headers(){
 
 find_prob_usr_headers(){
 
-  proj_name=""
-  mmm_bop=()
-  proj_name="${1}"
-  shift
-  mmm_bop=("$@")
+  if [[ "${#}" -lt 2 ]]; then
+    printf "[ERROR]: We expected at least 2 arguments to the"
+    printf "find_prob_usr_headers() function.\n"
+    printf "But we got %s instead.\n" "${#}"
+    exit 1
+  fi
 
-  tmp_usr_headers=()
-  tmp_usr_problem_headers=()
+  local proj_name
+  local tmp_array
+  local headers
+  local headers_reg
+  local files_array
+  local such_files
+  local files
+  local tmp_usr_headers
+  local tmp_usr_problem_headers
+  local success_counter
+
+  proj_name=""
+  tmp_array=()
+  headers=""
+  headers_reg=""
   files_array=()
   such_files=""
-  such_bops=""
-  bops_reg=""
   files=""
+  tmp_usr_headers=()
+  tmp_usr_problem_headers=()
+
+  proj_name="${1}"
+  shift
+  tmp_array=("$@")
 
   shopt -s globstar
 
@@ -507,22 +634,22 @@ find_prob_usr_headers(){
 
   shopt -u globstar
 
-  for such_bops in "${mmm_bop[@]}"; do
+  for headers in "${tmp_array[@]}"; do
 
-    bops_reg="${such_bops}"
+    headers_reg="${headers}"
     success_counter=0
 
     for such_files in "${files_array[@]}"; do
 
-      if [[ "${such_files}" =~ ${bops_reg} ]]; then
-        tmp_usr_headers+=("${such_bops}")
+      if [[ "${such_files}" =~ ${headers_reg} ]]; then
+        tmp_usr_headers+=("${headers}")
         success_counter=$(("${success_counter}" +1))
         break
       fi
     done
 
     if [[ "${success_counter}" -eq 0 ]]; then
-      tmp_usr_problem_headers+=("${such_bops}")
+      tmp_usr_problem_headers+=("${headers}")
     fi
   done
 
@@ -539,7 +666,9 @@ find_prob_usr_headers(){
 
 final_output(){
 
-  local such_projects
+  local proj
+
+  proj=""
 
   set +o nounset
 
