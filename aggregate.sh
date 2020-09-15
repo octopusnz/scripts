@@ -120,7 +120,7 @@ get_project_dirs(){
 
   shopt -s globstar
 
-  for files in **//*; do
+  for files in **/*; do
     if [[ -f "${files}" ]]; then
       files_array+=(\./"${files}")
     fi
@@ -407,8 +407,13 @@ regex_headers(){
   local array_sys
   local array_usr
 
+  declare -A clean_array_sys
+  declare -A clean_array_usr
+
   array_sys=()
   array_usr=()
+  clean_array_sys=()
+  clean_array_usr=()
   such_loop=""
 
   for such_loop in "${raw_headers[@]}"; do
@@ -418,21 +423,32 @@ regex_headers(){
     #TO-DO: Investigate whether the OR "-n" here needs nounsetmatch to be
     #       temporarily disabled.
 
+    # We read these into associative arrays just to clear out any duplicates
+    # using the keys.
+
     while read -r -t 3 make_line || [[ -n "${make_line}" ]]; do
 
       if [[ "${make_line}" =~ ${include_reg_sys} ]]; then
-          array_sys+=("${BASH_REMATCH[0]}")
+          clean_array_sys+=(["${BASH_REMATCH[0]}"]="${1}")
       elif [[ "${make_line}" =~ ${include_reg_usr} ]]; then
-          array_usr+=("${BASH_REMATCH[0]}")
+          clean_array_usr+=(["${BASH_REMATCH[0]}"]="${1}")
       fi
     done < "${such_loop}"
   done
 
-  if [[ "${#array_sys[@]}" -gt 0 ]]; then
+  if [[ "${#clean_array_sys[@]}" -gt 0 ]]; then
+    dirty_key=""
+    for dirty_key in "${!clean_array_sys[@]}"; do
+      array_sys+=("${dirty_key}")
+    done
     input_clean "${1}" 0 "${array_sys[@]}"
   fi
 
-  if [[ "${#array_usr[@]}" -gt 0 ]]; then
+  if [[ "${#clean_array_usr[@]}" -gt 0 ]]; then
+    dirty_key=""
+    for dirty_key in "${!clean_array_usr[@]}"; do
+      array_usr+=("${dirty_key}")
+    done
     input_clean "${1}" 1 "${array_usr[@]}"
   fi
 
