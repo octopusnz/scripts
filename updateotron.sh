@@ -123,46 +123,8 @@ input_clean(){
   fi
 
   tmp_clean_1="${1,,}" &&
-    tmp_clean_2="${tmp_clean_1//[^0-9a-z\.\-]/}" &&
-    cleaned_var="${tmp_clean_2}";
-
-  return 0;
-}
-
-file_dir_check(){
-
-  if [[ "${#}" -lt 1 ]]; then
-    printf "[ERROR 7]: We expected at least 1 argument to the dir_checker()\n"
-    printf "function.\n"
-    printf "But we got %s instead.\n" "${#}"
-    exit 7
-  fi
-
-  local tests
-
-  tests=""
-  check_failure=0
-
-  set +o nounset
-
-  for tests in "${@}"; do
-
-    if [[ -n "${tests}" ]]; then
-
-      if [[ -d "${tests}" ]] || [[ -f "${tests}" ]]; then
-        check_failure=0
-      else
-        check_failure=1
-        break
-      fi
-
-    else
-      check_failure=1
-      break
-    fi
-  done
-
-  set -o nounset
+  tmp_clean_2="${tmp_clean_1//[^0-9a-z\.\-]/}" &&
+  cleaned_var="${tmp_clean_2}";
 
   return 0;
 }
@@ -307,6 +269,7 @@ startup(){
     [git]=mandatory
     [rbenv]=mandatory
     [rustup]=optional
+    [ruby]=mandatory
   )
 
   # Check for Bash 4.3+. We set zero if BASH_VERSINFO does not exist due
@@ -338,10 +301,8 @@ startup(){
   printf "Welcome to the update script.\n"
   printf "Doing some setup.\n"
 
-  file_dir_check "${lock_file_dir%/}${lock_file}"
-
-  if [[ "${check_failure}" -eq 0 ]]; then
-    printf "[ERROR 3]: Lock file exists: %s%s\n" "${lock_file_dir%/}" \
+  if [[ -f "${lock_file_dir%/}${lock_file}" ]]; then
+    printf "[ERROR 3]: Lock file exists: %s%s\n" "${lock_file_dir%/}"\
       "${lock_file}";
     exit 3
   fi
@@ -384,23 +345,13 @@ startup(){
     logic_error "${err_cmd}" 'err_cmd'
   fi
 
-  file_dir_check "${script_dir%/}${rbv_file}"
-
-  if [[ "${check_failure}" -ne 0 ]]; then
-      printf "[ERROR 4]: No %s file exists at %s%s\n" "${rbv_file}" \
-       "${script_dir%/}" "${rbv_file}";
-    exit 4
-  fi
-
   printf "\n"
   printf "2. Checking that directories exist.\n"
 
   err_dir=0
 
   for dir_list in "${all_dir[@]}"; do
-    file_dir_check "${dir_list}"
-
-    if [[ "${check_failure}" -ne 0 ]]; then
+    if [[ ! -d "${dir_list}" ]]; then
         err_dir_list+=("${dir_list}") &&
           err_dir=1;
     else
@@ -424,12 +375,11 @@ startup(){
   # checking each one with an external application.
 
   for many_dir in "${git_dir[@]}"/*/; do
-    file_dir_check "${many_dir%/}${git_check}"
 
-    if [[ "${check_failure}" -eq 0 ]]; then
+    if [[ -e "${many_dir%/}${git_check}" ]]; then
       git -C "${many_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
-        git_array+=("${many_dir}") &&
-        printf "%s ready\n" "${many_dir}";
+      git_array+=("${many_dir}") &&
+      printf "%s ready\n" "${many_dir}";
     fi
   done
 
@@ -445,6 +395,8 @@ ruby_curation(){
   local ruby_dir_test
 
   declare -gA ruby_array
+
+  system_ruby=0
 
  # We get the list of versions current installed/available via rbenv.
  # We'll use this to check what's possible to set a version to later on.
@@ -483,20 +435,32 @@ ruby_curation(){
   # Try and set a default version to use
   printf "\n"
   printf "Attempting to set default Ruby version.\n"
-  sanitize "${script_dir}" 0
+
+  if [[ ! -f "${script_dir%/}${rbv_file}" ]]; then
+    def_ruby_version=$(rbenv version)
+    printf "\n"
+    printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
+
+    if [[ "${def_ruby_version}" == "system" ]]; then
+      system_ruby=1
+      printf "System Ruby version has been set as default.\n"
+      printf "We'll skip updating RubyGems to avoid trampling your settings.\n"
+
+    fi
+  else
+    sanitize "${script_dir}" 0
+  fi
 
   printf "\n"
   printf "4. Checking for ruby projects that need a bundle.\n"
 
   for ruby_dir_test in "${ruby_projects_dir[@]}"/*/; do
-    file_dir_check "${ruby_dir_test%/}${gem_file}"
 
-    if [[ "${check_failure}" -eq 0 ]]; then
-    file_dir_check "${ruby_dir_test%/}${rbv_file}"
+    if [[ -f "${ruby_dir_test%/}${gem_file}" ]]; then
 
-      if [[ "${check_failure}" -eq 0 ]]; then
-          printf "%s ready\n" "${ruby_dir_test}"
-          sanitize "${ruby_dir_test}" 1
+      if [[ -f "${ruby_dir_test%/}${rbv_file}" ]]; then
+        printf "%s ready\n" "${ruby_dir_test}"
+        sanitize "${ruby_dir_test}" 1
       else
         ruby_array+=(["${ruby_dir_test}"]="${def_ruby_version}")
         printf "%s ready\n" "${ruby_dir_test}"
@@ -513,7 +477,7 @@ ruby_curation(){
 
       if [[ "${rb_i}" == "${del_target}" ]]; then
           unset ruby_array["${rb_i}"] &&
-            printf "%s removed.\n" "${rb_i}";
+          printf "%s removed.\n" "${rb_i}";
       fi
     done
   done
@@ -532,20 +496,16 @@ updates(){
   printf "\n"
   printf "5. Let us try some updates.\n"
 
-  file_dir_check "${rbenv_dir%/}${git_check}"
-
-  if [[ "${check_failure}" -eq 0 ]]; then
+  if [[ -f "${rbenv_dir%/}${git_check}" ]]; then
     git -C "${rbenv_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
-      printf "Updating rbenv\n" &&
-      git -C "${rbenv_dir}" pull;
+    printf "Updating rbenv\n" &&
+    git -C "${rbenv_dir}" pull;
   fi
 
-  file_dir_check "${ruby_build_dir%/}${git_check}"
-
-  if [[ "${check_failure}" -eq 0 ]]; then
+  if [[ -f "${ruby_build_dir%/}${git_check}" ]]; then
     git -C "${ruby_build_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
-      printf "Updating ruby-build\n" &&
-      git -C "${ruby_build_dir}" pull;
+    printf "Updating ruby-build\n" &&
+    git -C "${ruby_build_dir}" pull;
   fi
 
   for git_updates in "${git_array[@]}"; do
@@ -556,8 +516,8 @@ updates(){
   for update_params in "${!ruby_array[@]}"; do
     printf "Updating %s\n" "${update_params}"
     export BUNDLE_GEMFILE="${update_params%/}${gem_file}" &&
-      export RBENV_VERSION="${ruby_array["${update_params}"]}" &&
-      bundle update;
+    export RBENV_VERSION="${ruby_array["${update_params}"]}" &&
+    bundle update;
   done
 
   # Rust and Cabal are optional so we skip them if not found or not in $PATH.
@@ -605,10 +565,16 @@ updates(){
   # We re-set the ruby version once more in case an earlier update to a ruby
   # project folder left us on another version.
 
-  printf "Updating Ruby Gems.\n"
-  printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
-  export RBENV_VERSION="${def_ruby_version}" &&
+  if [[ "${system_ruby}" -eq 0 ]]; then
+
+    printf "Updating RubyGems.\n"
+    printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
+    export RBENV_VERSION="${def_ruby_version}" &&
     gem update --system;
+
+  else
+  printf "Skipping RubyGems update\n"
+  fi
 
   return 0;
 }

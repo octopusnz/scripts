@@ -32,6 +32,7 @@ include_reg_sys="^\\s*#\\s*include\\s*+[<][^>]*[>]\\s*"
 include_reg_usr="^\\s*#\\s*include\\s*+[\"][^\"]*[\"]\\s*"
 cc_reg="(^\\s*CC\\s*)(\\s*:\\s*)?(\\s*?\\s*)?(=)"
 clean_regex="<(.*?)>|\"(.*?)\""
+# function_regex="^\s*(?:(?:inline|static)\s+){0,2}(?!else|typedef|return)\w+\s+\*?\s*(\w+)\s*\([^0]+\)\s*;?"
 
 cleanup(){
 
