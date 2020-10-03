@@ -15,7 +15,7 @@
 # TO-DO: [2]: Review rbv_reg regex
 # TO-DO: [3]: Support for other ruby env managers (RVM)
 # TO-DO: [4]: Go support
-# TO-DO: [5]: Should default ruby version get derived from env and not file?
+# I think we need to use the ruby version in Gemfile if no ruby version found
 
 set -o errexit
 set -o nounset
@@ -38,33 +38,33 @@ rbv_file='/.ruby-version'
 git_check='/.git'
 rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
 
+
 cleanup(){
 
-  local exit_status
+  local exit_status=""
 
   # This needs to be first so it captures the exit status from the cmd
   # that triggered the trap.
 
-  exit_status=""
   exit_status="${?}"
 
   # Unset trap to prevent loops or double calling the cleanup() function.
 
   trap '' ERR EXIT SIGHUP SIGINT SIGTERM
 
-  printf "\n"
-  printf "5. Cleaning up and exiting.\n"
+    if ! rm "${lock_file_dir%/}${lock_file}"; then
+      if [[ "${debug}" == 1 ]]; then
+        printf "[WARNING]: There was an error removing the lock file.\n"
+        printf "We tried to remove this file: %s%s\n" "${lock_file_dir%/}" \
+         "${lock_file}"
+        printf "We'll continue to attempt to exit.\n"
+      fi
+    fi
 
-  if ! rm "${lock_file_dir%/}${lock_file}"; then
-    printf "[WARNING]: There was an error and we're not sure what happened.\n"
-    printf "We tried to remove this file here: %s%s\n" "${lock_file_dir%/}" \
-      "${lock_file}"
-    printf "We'll continue to attempt to exit.\n"
-  else
-    printf "Removing lock file\n"
+
+  if [[ "${debug}" == 1 ]]; then
+    printf "Exit code is: %s\n" "${exit_status}"
   fi
-
-  printf "Exit code is: %s\n" "${exit_status}"
 
   return 0;
 }
@@ -109,12 +109,10 @@ logic_error(){
 
 input_clean(){
 
-  local tmp_clean_1
-  local tmp_clean_2
+  local tmp_clean_1=""
+  local tmp_clean_2=""
 
-  tmp_clean_1=""
-  tmp_clean_2=""
-  cleaned_var=""
+  declare -g cleaned_var=""
 
   if [[ "${#}" -ne 1 ]]; then
     printf "[ERROR 7]: We expected 1 argument to the input_clean() function.\n"
@@ -144,16 +142,10 @@ sanitize(){
     exit 7
   fi
 
-  local rbv_line
-  local reg_matches
-  local such_versions
-  local tmp_ruby_version
-
-  tmp_ruby_version=""
-  such_versions=""
-  rbv_line=""
-  reg_matches=0
-
+  local rbv_line=""
+  local reg_matches=0
+  local such_versions=""
+  local tmp_ruby_version=""
 
   # || [[ -n $rbv_line ]] prevents the last line from being ignored if it
   # doesn't end with a \n (since read returns a non-zero exit code when it
@@ -179,22 +171,22 @@ sanitize(){
 
   # We compare and contrast with the available verisons rbenv knows about
 
-  for such_versions in "${rbenv_versions[@]}"; do
+  for such_versions in "${r_env_versions[@]}"; do
 
     if [[ "${tmp_ruby_version}" == "${such_versions}" ]]; then
 
       case "${2}" in
-        [0])
+        0)
           def_ruby_version="${tmp_ruby_version}" &&
             reg_matches=1;
           printf "\n"
           printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
           ;;
-        [1])
+        1)
           ruby_array+=(["${1}"]="${tmp_ruby_version}") &&
             reg_matches=1;
           ;;
-        [*])
+        *)
           logic_error "${2}" '2'
           ;;
       esac
@@ -211,15 +203,15 @@ sanitize(){
     printf "We couldn't parse %s%s.\n" "${1%/}" "${rbv_file}"
 
     case "${2}" in
-      [0])
+      0)
         printf "[ERROR 4]: No valid %s file found.\n" "${rbv_file}"
         exit 4
         ;;
-      [1])
+      1)
         printf "We'll remove it from the update list to be safe.\n"
         del_ruby_update+=("${1}")
         ;;
-      [*])
+      *)
         logic_error "${2}" '2'
         ;;
     esac
@@ -231,19 +223,133 @@ sanitize(){
   return 0;
 }
 
+rb_env_setup(){
+
+  if [[ "${#}" -ne 1 ]]; then
+    printf "[ERROR 7]: We expected 1 argument to the rb_env_setup() function.\n"
+    printf "But we got %s instead.\n" "${#}"
+    exit 7
+  fi
+
+  local poss_versions=""
+  local r_versions=()
+
+  declare -g r_set_ver=""
+  declare -g r_env_versions=()
+
+  case "${1,,}" in
+      rbenv)
+            mapfile -t r_versions < <(rbenv versions)
+            r_set_ver="RBENV_VERSION"
+            r_get_cur_ver="rbenv version"
+            ;;
+        rvm)
+            printf "RVM support not yet implemented"
+            exit 10
+            ;;
+          *)
+            printf "Unknown or unsupported ruby version manager\n"
+            printf "We got: %s\n" "${1}"
+            printf "See usage information below:\n"
+            printf "\n"
+            print_help
+            ;;
+  esac
+
+  set +o nounset
+
+   for poss_versions in "${r_versions[@]}"; do
+
+    cleaned_var=""
+
+    if [[ "${poss_versions}" =~ ${rbv_reg} ]]; then
+      input_clean "${BASH_REMATCH[0]}"
+
+      if [[ -n "${cleaned_var}" ]]; then
+        r_env_versions+=("${cleaned_var}");
+      else
+        logic_error 'unset' 'cleaned_var'
+      fi
+    fi
+   done
+
+  set -o nounset
+
+  # If we couldn't get any sensible versions we'll error.
+
+  if [[ "${#r_versions[@]}" -lt 1 ]]; then
+      printf "We couldn't get any valid Ruby versions the env manager.\n"
+      exit 10
+  fi
+
+  return 0;
+
+}
+
+# printf -- stops the printf command from processing the "-" options as params
+
+print_help(){
+
+  printf "Usage: updateotron [ruby version manager]\n"
+  printf "\n"
+  printf "For example: updateotron rbenv\n"
+  printf "Currently rbenv is the only support option.\n"
+  printf "If no ruby version manager is specified the default is rbenv.\n"
+  printf "\n"
+  printf "Other options are:\n"
+  printf -- "-d    Enable debug mode\n"
+  printf -- "-h    Prints this help information and exits.\n"
+  printf -- "-l    Prints license information and exits.\n"
+  printf "\n"
+  printf "See the updateotron.txt file for additional documentation.\n"
+  printf "The latest version is available from: "
+  printf "https://github.com/octopusnz/scripts\n"
+
+  exit 0;
+}
+
+print_license(){
+
+  printf "\n"
+  printf "Copyright 2020 Jacob Doherty\n"
+  printf "\n"
+  printf "Permission is hereby granted, free of charge, to any person \n"
+  printf "obtaining a copy of this software and associated documentation \n"
+  printf "files (the \"Software\"), to deal in the Software without \n"
+  printf "restriction, including without limitation the rights to use, copy, \n"
+  printf "modify, merge, publish, distribute, sublicense, and/or sell copies \n"
+  printf "of the Software, and to permit persons to whom the Software is \n"
+  printf "furnished to do so, subject to the following conditions:\n"
+  printf "\n"
+  printf "The above copyright notice and this permission notice shall be \n"
+  printf "included in all copies or substantial portions of the Software.\n"
+  printf "\n"
+  printf "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, \n"
+  printf "EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF \n"
+  printf "MERCHANTABILITY,FITNESS FOR A PARTICULAR PURPOSE AND \n"
+  printf "NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT  \n"
+  printf "HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, \n"
+  printf "WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \n"
+  printf "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER \n"
+  printf "DEALINGS IN THE SOFTWARE.\n"
+
+  exit 0;
+}
+
+
 startup(){
 
-  local all_dir
-  local bash_err
-  local cmd_test
-  local command_list
-  local dir_list
-  local err_cmd
-  local err_dir
-  local many_dir
+  local all_dir=()
+  local bash_err=0
+  local cmd_test=""
+  local dir_list=""
+  local err_cmd=0
+  local err_dir=0
+  local many_dir=""
 
-  declare -A command_list
-  declare -gA err_cmd_list
+  declare -g debug=0
+  declare -A command_list=()
+  declare -gA err_cmd_list=()
 
   all_dir=(
 
@@ -272,21 +378,28 @@ startup(){
     [ruby]=mandatory
   )
 
+  if [[ -f "${lock_file_dir%/}${lock_file}" ]]; then
+    printf "[ERROR 3]: Lock file exists: %s%s\n" "${lock_file_dir%/}"\
+      "${lock_file}";
+    exit 3
+  fi
+
+  # Create lockfile
+  printf "" >> "${lock_file_dir%/}${lock_file}"
+
   # Check for Bash 4.3+. We set zero if BASH_VERSINFO does not exist due
   # to really old bash versions not providing it by default.
-
-  bash_err=0
 
   case "${BASH_VERSINFO[0]:-0}" in
 
     [0-3])
-        bash_err=1
-        ;;
-      [4])
-        if [[ "${BASH_VERSINFO[1]:-0}" -lt 3 ]]; then
           bash_err=1
-        fi
-        ;;
+          ;;
+        4)
+          if [[ "${BASH_VERSINFO[1]:-0}" -lt 3 ]]; then
+          bash_err=1
+          fi
+          ;;
   esac
 
   if [[ "${bash_err}" -eq 1 ]]; then
@@ -298,22 +411,40 @@ startup(){
     logic_error "${bash_err}" 'bash_err'
   fi
 
-  printf "Welcome to the update script.\n"
-  printf "Doing some setup.\n"
+  # Check how many command line args were specified when launching the script.
+  # We only expect 0 or 1.
 
-  if [[ -f "${lock_file_dir%/}${lock_file}" ]]; then
-    printf "[ERROR 3]: Lock file exists: %s%s\n" "${lock_file_dir%/}"\
-      "${lock_file}";
-    exit 3
+  if [[ "${#@}" == 2 ]]; then
+
+    if [[ "${1}" =~ ^(-d|--debug|debug)$ ]]; then
+      debug=1
+      rb_env_setup "${2}"
+    else
+      printf "We got more command line options than we expected.\n"
+      printf "See below for usage:\n"
+      print_help
+    fi
+
+  elif [[ "${#@}" -eq 1 ]]; then
+    if [[ "${1}" =~ ^(-h|--help|help)$ ]]; then
+      print_help
+    elif [[ "${1}" =~ ^(-l|--license|license)$ ]]; then
+      print_license
+    else
+      rb_env_setup "${1}"
+    fi
+
+  elif [[ "${#@}" -eq 0 ]]; then
+    rb_env_setup rbenv
+
+  else
+    printf "We got more command line options than we expected.\n"
+    printf "See below for usage:\n"
+    print_help
   fi
-
-  printf "[MSG]: Creating lock file.\n"
-  printf "" >> "${lock_file_dir%/}${lock_file}"
 
   printf "\n"
   printf "1. Checking if commonly used commands are OK.\n"
-
-  err_cmd=0
 
   for cmd_test in "${!command_list[@]}"; do
 
@@ -347,8 +478,6 @@ startup(){
 
   printf "\n"
   printf "2. Checking that directories exist.\n"
-
-  err_dir=0
 
   for dir_list in "${all_dir[@]}"; do
     if [[ ! -d "${dir_list}" ]]; then
@@ -388,56 +517,21 @@ startup(){
 
 ruby_curation(){
 
-  local del_target
-  local poss_versions
-  local rb_i
-  local rbenv_map
-  local ruby_dir_test
+  local del_target=""
+  local rb_i=""
+  local ruby_dir_test=""
 
-  declare -gA ruby_array
+  declare -gA ruby_array=()
 
   system_ruby=0
 
- # We get the list of versions current installed/available via rbenv.
- # We'll use this to check what's possible to set a version to later on.
-
-  rbenv_versions=()
-
-  mapfile -t rbenv_map < <(rbenv versions)
-
-  set +o nounset
-
-   for poss_versions in "${rbenv_map[@]}"; do
-
-    cleaned_var=""
-
-    if [[ "${poss_versions}" =~ ${rbv_reg} ]]; then
-      input_clean "${BASH_REMATCH[0]}"
-
-      if [[ -n "${cleaned_var}" ]]; then
-        rbenv_versions+=("${cleaned_var}");
-      else
-        logic_error 'unset' 'cleaned_var'
-      fi
-    fi
-   done
-
-  set -o nounset
-
-  # If we couldn't get any sensible versions out of rbenv we'll error.
-
-  if [[ "${#rbenv_versions[@]}" -lt 1 ]]; then
-      printf "We couldn't get any valid Ruby versions from rbenv.\n"
-      printf "Check the output of rbenv versions and the PATH.\n"
-      exit 10
-  fi
 
   # Try and set a default version to use
   printf "\n"
   printf "Attempting to set default Ruby version.\n"
 
   if [[ ! -f "${script_dir%/}${rbv_file}" ]]; then
-    def_ruby_version=$(rbenv version)
+    def_ruby_version=$(${r_get_cur_ver})
     printf "\n"
     printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
 
@@ -445,7 +539,6 @@ ruby_curation(){
       system_ruby=1
       printf "System Ruby version has been set as default.\n"
       printf "We'll skip updating RubyGems to avoid trampling your settings.\n"
-
     fi
   else
     sanitize "${script_dir}" 0
@@ -487,11 +580,11 @@ ruby_curation(){
 
 updates(){
 
-  local cabal_err
+  local cabal_err=0
   local err_value
-  local git_updates
-  local rust_err
-  local update_params
+  local git_updates=""
+  local rust_err=0
+  local update_params=""
 
   printf "\n"
   printf "5. Let us try some updates.\n"
@@ -516,14 +609,11 @@ updates(){
   for update_params in "${!ruby_array[@]}"; do
     printf "Updating %s\n" "${update_params}"
     export BUNDLE_GEMFILE="${update_params%/}${gem_file}" &&
-    export RBENV_VERSION="${ruby_array["${update_params}"]}" &&
+    export "${r_set_ver}"="${ruby_array["${update_params}"]}" &&
     bundle update;
   done
 
-  # Rust and Cabal are optional so we skip them if not found or not in $PATH.
 
-  rust_err=0
-  cabal_err=0
 
   # Could check these in each update attempt, but we wanted to only do the for
   # loop once. You need to update these with expected values if you add another
@@ -566,20 +656,18 @@ updates(){
   # project folder left us on another version.
 
   if [[ "${system_ruby}" -eq 0 ]]; then
-
     printf "Updating RubyGems.\n"
     printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
-    export RBENV_VERSION="${def_ruby_version}" &&
+    export "${r_set_ver}"="${def_ruby_version}" &&
     gem update --system;
-
   else
-  printf "Skipping RubyGems update\n"
+    printf "Skipping RubyGems update\n"
   fi
 
   return 0;
 }
 
-startup
+startup "${@}"
 ruby_curation
 updates
 exit 0
