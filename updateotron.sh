@@ -61,7 +61,6 @@ cleanup(){
       fi
     fi
 
-
   if [[ "${debug}" == 1 ]]; then
     printf "Exit code is: %s\n" "${exit_status}"
   fi
@@ -283,7 +282,6 @@ rb_env_setup(){
   fi
 
   return 0;
-
 }
 
 # printf -- stops the printf command from processing the "-" options as params
@@ -293,7 +291,7 @@ print_help(){
   printf "Usage: updateotron [ruby version manager]\n"
   printf "\n"
   printf "For example: updateotron rbenv\n"
-  printf "Currently rbenv is the only support option.\n"
+  printf "Currently rbenv is the only supported option.\n"
   printf "If no ruby version manager is specified the default is rbenv.\n"
   printf "\n"
   printf "Other options are:\n"
@@ -335,7 +333,6 @@ print_license(){
 
   exit 0;
 }
-
 
 startup(){
 
@@ -430,6 +427,9 @@ startup(){
       print_help
     elif [[ "${1}" =~ ^(-l|--license|license)$ ]]; then
       print_license
+    elif [[ "${1}" =~ ^(-d|--debug|debug)$ ]]; then
+      debug=1
+      rb_env_setup rbenv
     else
       rb_env_setup "${1}"
     fi
@@ -525,7 +525,6 @@ ruby_curation(){
 
   system_ruby=0
 
-
   # Try and set a default version to use
   printf "\n"
   printf "Attempting to set default Ruby version.\n"
@@ -612,8 +611,6 @@ updates(){
     export "${r_set_ver}"="${ruby_array["${update_params}"]}" &&
     bundle update;
   done
-
-
 
   # Could check these in each update attempt, but we wanted to only do the for
   # loop once. You need to update these with expected values if you add another
