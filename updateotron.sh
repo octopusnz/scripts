@@ -284,6 +284,31 @@ rb_env_setup(){
   return 0;
 }
 
+parse_response(){
+
+  if [[ "${#}" -ne 1 ]]; then
+    printf "[ERROR 7]: We expected 1 argument to the parse_response()\
+            function.\n"
+    printf "But we got %s instead.\n" "${#}"
+    exit 7
+  fi
+
+  local response=""
+
+  set +o errexit
+
+  response=$(export GIT_TERMINAL_PROMPT=0 && git -C "${1}" pull 2>&1)
+
+  if [[ "${response,,}" =~ ^(fatal) ]]; then
+    printf "Repository might have been made private? We'll skip it.\n"
+  else printf "%s\n" "${response}"
+  fi
+
+  set -o errexit
+
+  return 0;
+}
+
 # printf -- stops the printf command from processing the "-" options as params
 
 print_help(){
@@ -588,13 +613,13 @@ updates(){
   printf "\n"
   printf "5. Let us try some updates.\n"
 
-  if [[ -f "${rbenv_dir%/}${git_check}" ]]; then
+  if [[ -e "${rbenv_dir%/}${git_check}" ]]; then
     git -C "${rbenv_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
     printf "Updating rbenv\n" &&
     git -C "${rbenv_dir}" pull;
   fi
 
-  if [[ -f "${ruby_build_dir%/}${git_check}" ]]; then
+  if [[ -e "${ruby_build_dir%/}${git_check}" ]]; then
     git -C "${ruby_build_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
     printf "Updating ruby-build\n" &&
     git -C "${ruby_build_dir}" pull;
@@ -602,7 +627,8 @@ updates(){
 
   for git_updates in "${git_array[@]}"; do
     printf "Updating %s\n" "${git_updates}"
-    git -C "${git_updates}" pull
+    parse_response "${git_updates}"
+  #  git -C "${git_updates}" pull
   done
 
   for update_params in "${!ruby_array[@]}"; do
