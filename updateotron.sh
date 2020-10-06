@@ -277,7 +277,7 @@ rb_env_setup(){
   # If we couldn't get any sensible versions we'll error.
 
   if [[ "${#r_versions[@]}" -lt 1 ]]; then
-      printf "We couldn't get any valid Ruby versions the env manager.\n"
+      printf "We couldn't get any valid Ruby versions from the env manager.\n"
       exit 10
   fi
 
@@ -294,6 +294,19 @@ parse_response(){
   fi
 
   local response=""
+  local green=""
+  local std=""
+  local red=""
+  local no_colors=0
+
+  # Check for tput and skip the color stuff if not found just to be safe
+
+  for err_value in "${!err_cmd_list[@]}"; do
+
+    if [[ "${err_value}" == 'tput' ]]; then
+      no_colors=1
+    fi
+  done
 
   set +o errexit
 
@@ -301,7 +314,20 @@ parse_response(){
 
   if [[ "${response,,}" =~ ^(fatal) ]]; then
     printf "Repository might have been made private? We'll skip it.\n"
-  else printf "%s\n" "${response}"
+
+  elif [[ "${response}" =~ (\+|\-) ]]; then
+    if [[ "${no_colors}" -eq 0 ]]; then
+      green=$(tput setaf 2)
+      std=$(tput sgr0)
+      red=$(tput setaf 1)
+      response="${response//[\+]/${green}\+${std}}"
+      response="${response//[\-]/${red}\-${std}}"
+      printf "%s\n" "${response}"
+    else
+      printf "%s\n" "${response}"
+    fi
+  else
+    printf "%s\n" "${response}"
   fi
 
   set -o errexit
@@ -398,6 +424,7 @@ startup(){
     [rbenv]=mandatory
     [rustup]=optional
     [ruby]=mandatory
+    [tput]=optional
   )
 
   if [[ -f "${lock_file_dir%/}${lock_file}" ]]; then
