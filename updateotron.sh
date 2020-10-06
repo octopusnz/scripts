@@ -322,7 +322,6 @@ parse_response(){
       green=$(tput setaf 2)
       std=$(tput sgr0)
       red=$(tput setaf 1)
-      printf "%s\n" "${response}"
       response1="${response%%\|*}"
       printf "%s" "${response1}|"
       response2="${response##*\|}"
