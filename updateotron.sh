@@ -294,6 +294,8 @@ parse_response(){
   fi
 
   local response=""
+  local response1=""
+  local response2=""
   local green=""
   local std=""
   local red=""
@@ -320,9 +322,13 @@ parse_response(){
       green=$(tput setaf 2)
       std=$(tput sgr0)
       red=$(tput setaf 1)
-      response="${response//[\+]/${green}\+${std}}"
-      response="${response//[\-]/${red}\-${std}}"
       printf "%s\n" "${response}"
+      response1="${response%%\|*}"
+      printf "%s" "${response1}|"
+      response2="${response##*\|}"
+      response2="${response2//[\+]/${green}\+${std}}"
+      response2="${response2//[\-]/${red}\-${std}}"
+      printf "%s\n" "${response2}"
     else
       printf "%s\n" "${response}"
     fi
