@@ -304,7 +304,6 @@ parse_response(){
   # Check for tput and skip the color stuff if not found just to be safe
 
   for err_value in "${!err_cmd_list[@]}"; do
-
     if [[ "${err_value}" == 'tput' ]]; then
       no_colors=1
     fi
@@ -317,14 +316,18 @@ parse_response(){
   if [[ "${response,,}" =~ ^(fatal) ]]; then
     printf "Repository might have been made private? We'll skip it.\n"
 
-  elif [[ "${response}" =~ (\+|\-) ]]; then
-    if [[ "${no_colors}" -eq 0 ]]; then
+  # TO-DO: Could make the regex only match after the | char to avoid some
+  # processing.
+
+  elif [[ "${no_colors}" -eq 0 ]]; then
+    if [[ "${response}" =~ (\+|\-) ]]; then
+      printf "%s\n" "${response}"
       green=$(tput setaf 2)
       std=$(tput sgr0)
       red=$(tput setaf 1)
       response1="${response%%\|*}"
       printf "%s" "${response1}|"
-      response2="${response##*\|}"
+      response2="${response#*\|}"
       response2="${response2//[\+]/${green}\+${std}}"
       response2="${response2//[\-]/${red}\-${std}}"
       printf "%s\n" "${response2}"
@@ -648,19 +651,18 @@ updates(){
   if [[ -e "${rbenv_dir%/}${git_check}" ]]; then
     git -C "${rbenv_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
     printf "Updating rbenv\n" &&
-    git -C "${rbenv_dir}" pull;
+    parse_response "${rbenv_dir}"
   fi
 
   if [[ -e "${ruby_build_dir%/}${git_check}" ]]; then
     git -C "${ruby_build_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
     printf "Updating ruby-build\n" &&
-    git -C "${ruby_build_dir}" pull;
+    parse_response "${ruby_build_dir}"
   fi
 
   for git_updates in "${git_array[@]}"; do
     printf "Updating %s\n" "${git_updates}"
     parse_response "${git_updates}"
-  #  git -C "${git_updates}" pull
   done
 
   for update_params in "${!ruby_array[@]}"; do
