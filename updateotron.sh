@@ -299,6 +299,7 @@ parse_response(){
   local green=""
   local std=""
   local red=""
+  local line=""
   local no_colors=0
 
   # Check for tput and skip the color stuff if not found just to be safe
@@ -318,26 +319,40 @@ parse_response(){
 
   # TO-DO: Could make the regex only match after the | char to avoid some
   # processing.
+  # Also need to turn this into a for each | process on that line to stop
+  # changing color of file names. i.e test-testfile
 
   elif [[ "${no_colors}" -eq 0 ]]; then
     if [[ "${response}" =~ (\+|\-) ]]; then
-      printf "%s\n" "${response}"
       green=$(tput setaf 2)
       std=$(tput sgr0)
       red=$(tput setaf 1)
-      response1="${response%%\|*}"
-      printf "%s" "${response1}|"
-      response2="${response#*\|}"
-      response2="${response2//[\+]/${green}\+${std}}"
-      response2="${response2//[\-]/${red}\-${std}}"
-      printf "%s\n" "${response2}"
+      IFS=$'\n'
+      for line in ${response}; do
+        response1=""
+        response2=""
+        if [[ "${line}" =~ (\|) ]]; then
+          response1="${line%%\|*}"
+          response2="${line##*\|}"
+          response2="${response2//[\+]/${green}\+${std}}"
+          response2="${response2//[\-]/${red}\-${std}}"
+          printf "%s" "${response1}|"
+          printf "%s\n" "${response2}"
+        elif [[ "${line}" =~ (\() ]]; then
+          response1="${line//[\+]/${green}\+${std}}"
+          response1="${response1//[\-]/${red}\-${std}}"
+          printf "%s\n" "${response1}"
+        else printf "%s\n" "${line}"
+        fi
+      done
     else
       printf "%s\n" "${response}"
-    fi
+      fi
   else
     printf "%s\n" "${response}"
   fi
 
+  unset IFS
   set -o errexit
 
   return 0;
