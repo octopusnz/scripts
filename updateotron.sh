@@ -302,7 +302,7 @@ parse_response(){
   local line=""
   local no_colors=0
 
-  # Check for tput and skip the color stuff if not found just to be safe
+  # Check for tput and skip the color stuff if not found
 
   for err_value in "${!err_cmd_list[@]}"; do
     if [[ "${err_value}" == 'tput' ]]; then
@@ -318,12 +318,12 @@ parse_response(){
     printf "Repository might have been made private? We'll skip it.\n"
 
   # TO-DO: Could make the regex only match after the | char to avoid some
-  # processing.
-  # Also need to turn this into a for each | process on that line to stop
-  # changing color of file names. i.e test-testfile
+  # processing. Can't do this with lookbehind I don't think? So need to split
+  # string again ...
 
   elif [[ "${no_colors}" -eq 0 ]]; then
     if [[ "${response}" =~ (\+|\-) ]]; then
+    #if [[ "${response}" =~ (?<=|)(\+|\-) ]]; then
       green=$(tput setaf 2)
       std=$(tput sgr0)
       red=$(tput setaf 1)
@@ -332,13 +332,14 @@ parse_response(){
         response1=""
         response2=""
         if [[ "${line}" =~ (\|) ]]; then
+        #if [[ "${line}" =~ (?<=|)(\+|\-) ]]; then
           response1="${line%%\|*}"
           response2="${line##*\|}"
           response2="${response2//[\+]/${green}\+${std}}"
           response2="${response2//[\-]/${red}\-${std}}"
           printf "%s" "${response1}|"
           printf "%s\n" "${response2}"
-        elif [[ "${line}" =~ (\() ]]; then
+        elif [[ "${line}" =~ (\(\+\)|\(\-\)) ]]; then
           response1="${line//[\+]/${green}\+${std}}"
           response1="${response1//[\-]/${red}\-${std}}"
           printf "%s\n" "${response1}"
