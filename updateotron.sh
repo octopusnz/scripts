@@ -722,7 +722,7 @@ updates(){
   else
     printf "\n"
     printf "Updating Cabal packages.\n"
-    cabal update
+    cabal v2-update
   fi
 
   # We re-set the ruby version once more in case an earlier update to a ruby
