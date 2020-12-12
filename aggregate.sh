@@ -277,21 +277,33 @@ determine_compilers(){
 
   for projects in "${full_projects[@]}"; do
 
-    cc_line=""
+      cc_line=""
+      cc_success_counter=0
 
     while read -r -t 3 cc_line || [[ -n "${cc_line}" ]]; do
 
-    if [[ "${cc_line}" =~ ${cc_reg} ]]; then
+	if [[ "${cc_line}" =~ ${cc_reg} ]]; then
 
-      projects="${projects%/*}/"
-      cc_line="${cc_line#*\=}"
-      comp_array+=(["${projects}"]="${cc_line}");
-      break
-    fi
+	    projects="${projects%/*}/"
+	    cc_line="${cc_line#*\=}"
+	    comp_array+=(["${projects}"]="${cc_line}");
+	    cc_success_counter="${cc_success_counter}"+1
+	    break
+        fi
 
     done < "${projects}"
+
+    # TO-DO: Maybe put another check in here that cc is a valid command
+    if [[ "${cc_success_counter}" -eq 0 ]]; then
+	printf "Couldn't find a specific compiler in %s\n" "${projects}"
+	printf "We will set cc as default \n"
+	projects="${projects%/*}/"
+	comp_array+=(["${projects}"]="cc");
+    fi
+
   done
 
+  # TO-DO: Review this, supposed to be a catchall if all of the above fails.
   if [[ "${#comp_array[@]}" -lt 1 ]]; then
     printf "Couldn't parse compilers, nothing to do."
     exit 1
@@ -471,6 +483,7 @@ input_clean(){
 
   local tmp_clean_1
   local tmp_clean_2
+  local tmp_clean_3
   local header_type
   local tmp_array
   local such_headers
@@ -500,11 +513,13 @@ input_clean(){
     cleaned_string=""
     tmp_clean_1=""
     tmp_clean_2=""
+    tmp_clean_3=""
     tmp_clean_1="${such_headers}"
 
     if [[ "${tmp_clean_1}" =~ ${clean_regex} ]]; then
-      tmp_clean_2="${BASH_REMATCH[0]}" &&
-      cleaned_string="${tmp_clean_2//[^0-9a-zA-Z\.\-\_]/}";
+	tmp_clean_2="${BASH_REMATCH[0]}" &&
+	tmp_clean_3="${tmp_clean_2##*/}"
+	cleaned_string="${tmp_clean_3//[^0-9a-zA-Z\.\-\_]/}";
 
     # TO-DO: Maybe need to think about another check here that the above
     #        succeeded. It will likely blow up before due to command failing.
@@ -567,7 +582,7 @@ find_prob_sys_headers(){
   # Go back through and get the compiler string from this array. Based on the
   # project folder which was passed into this function.
 
-  comp_lookup="${comp_array["${proj_name}"]}"
+  comp_lookup="${comp_array[${proj_name}]}"
 
   # Need to build this array on the fly based on the string of dirs we
   # have in another array.
