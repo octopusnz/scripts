@@ -121,6 +121,9 @@ get_project_dirs(){
 
   shopt -s globstar
 
+  # Here need to cater for the scenario of a user having a Makefile in the root of the project and another file called 'Makefile' in
+  # another dir in that project. Probably stop digging deeper once Makefile is found is sensible?
+
   for files in **/*; do
     if [[ -f "${files}" ]]; then
       files_array+=(\./"${files}")
