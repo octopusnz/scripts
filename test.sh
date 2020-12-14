@@ -103,7 +103,7 @@ cleanup() {
 
     for such_projects in "${full_projects[@]}"; do
 	such_projects="${such_projects,,}" &&
-	#such_projects="${such_projects%%"${home_dir}}" &&
+	such_projects="${such_projects##*/}" &&
 	all_projects+=("${such_projects}");
     done
 
