@@ -101,84 +101,65 @@ setup(){
   return 0;
 }
 
-tmp_charge(){
+# Get all project dirs that contain the project file (i.e could be Makefile).
+# The search is recursive from the dir the script was executed from.
 
-  set +o nounset
+get_project_dirs(){
 
-  if [[ "${#tmp_array[@]}" -gt 0 ]]; then
-      for deeper_files in "${tmp_array[@]}"; do
-          cd "${deeper_files}"
-          cust_get_files
-      done
+  local such_projects
+  local such_files
+  local files
+  local files_array
+
+  such_projects=""
+  such_files=""
+  files=""
+  files_array=()
+  full_projects=()
+
+  # Get all dirs in path
+
+  shopt -s globstar
+
+  # Here need to cater for the scenario of a user having a Makefile in the root of the project and another file called 'Makefile' in
+  # another dir in that project. Probably stop digging deeper once Makefile is found is sensible?
+
+  for files in **/*; do
+    if [[ -f "${files}" ]]; then
+      files_array+=(\./"${files}")
+    fi
+  done
+
+  shopt -u globstar
+
+  # Will match case in-sensitive i.e makefile, Makefile, MaKeFiLe
+
+  shopt -s nocasematch
+
+  for such_files in "${files_array[@]}"; do
+
+    if [[ "${such_files}" =~ ${make_reg} ]]; then
+      full_projects+=("${such_files}")
+    fi
+  done
+
+  shopt -u nocasematch
+
+  if [[ "${#full_projects[@]}" -lt 1 ]]; then
+    printf "We didn't find any matching projects. Nothing to do.\n"
+    exit 0
   fi
 
-  set -o nounset
+  all_projects=()
 
-}
+  for such_projects in "${full_projects[@]}"; do
+    such_projects="${such_projects,,}" &&
+    such_projects="${such_projects%/*}/" &&
+    all_projects+=("${such_projects}");
+  done
 
-cust_get_files() {
-
-    shopt -s nocasematch
-    success=0
-
-    for files in *; do
-        if [[ -f "${files}" ]]; then
-            if [[ "${files}" =~ ${make_reg} ]]; then
-                full_projects+=(\./"${files}")
-                success=$((success+1))
-                #This will only find the first one
-                break
-            fi
-        fi
-    done
-
-    shopt -u nocasematch
-
-    if [[ "${success}" -eq 0 ]]; then
-        unset tmp_array
-        for dirs in *; do
-            if [[ -d "${dirs}" ]]; then
-                tmp_array+=("${PWD}"/"${dirs}")
-            fi
-        done
-        tmp_charge
-    fi
-}
-
-dir_check() {
-
-    for dirs in *; do
-        if [[ -d "${dirs}" ]]; then
-            dirs_array+=("${PWD}"/"${dirs}")
-        fi
-    done
-
-    for deeper_files in "${dirs_array[@]}"; do
-        cd "${deeper_files}"
-        cust_get_files
-    done
-
-    return 0;
-}
-
-project_cleanup() {
-
-    if [[ "${#full_projects[@]}" -lt 1 ]]; then
-        printf "We didn't find any matching projects. Nothing to do.\n"
-        exit 0
-    fi
-
-    all_projects=()
-
-    for such_projects in "${full_projects[@]}"; do
-        such_projects="${such_projects,,}" &&
-        such_projects="${such_projects%/*}/"
-        #such_projects="${such_projects##*/}" &&
-        all_projects+=("${such_projects}");
-    done
-
-    # Will probably blow up before this due to above commands failing but just
-    # in case ...
+  # Will probably blow up before this due to above commands failing but just
+  # in case ...
 
   if [[ "${#all_projects[@]}" -lt 1 ]]; then
     printf "We couldn't parse the projects dirs. Nothing to do.\n"
@@ -187,40 +168,6 @@ project_cleanup() {
   fi
 
   return 0;
-}
-
-# Get all project dirs that contain the project file (i.e could be Makefile).
-# The search is recursive from the dir the script was executed from.
-
-get_project_dirs(){
-
-full_projects=()
-tmp_array=()
-success=0
-
-    shopt -s nocasematch
-
-    for files in *; do
-        if [[ -f "${files}" ]]; then
-            if [[ "${files}" =~ ${make_reg} ]]; then
-                full_projects+=(\./"${files}")
-                success=$((success+1))
-                #This will only find the first one
-                break
-            fi
-        fi
-    done
-
-    shopt -u nocasematch
-
-    if [[ "${success}" -gt 0 ]]; then
-        project_cleanup
-
-    else
-        dir_check
-    fi
-
-    return 0;
 }
 
 # Get all files and store in array against project based on file ext variable.
@@ -241,6 +188,7 @@ get_files(){
   # TO-DO: If there are project dirs within dirs we get them all.
 
   for proj in "${all_projects[@]}"; do
+
     files_array=()
     files=""
     tmp_array=()
@@ -251,6 +199,7 @@ get_files(){
     for files in "${proj}"**/*; do
       if [[ -f "${files}" ]]; then
         tmp_array+=("${files}")
+
       fi
     done
 
@@ -330,7 +279,7 @@ determine_compilers(){
   comp_array=()
 
   for projects in "${full_projects[@]}"; do
-
+      echo "${projects}"
       cc_line=""
       cc_success_counter=0
 

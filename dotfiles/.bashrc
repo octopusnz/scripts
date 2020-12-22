@@ -112,20 +112,10 @@ if ! shopt -oq posix; then
   fi
 fi
 
-# Cabal
-export PATH="$HOME/.cabal/bin:$PATH"
-
-# Rbenv
+# Custom set up
 export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
-
-# Rust
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# Go
-export PATH=$PATH:/usr/local/go/bin
-export PATH="$HOME/go/bin:$PATH"
-
-# GCC 10
-export PATH=/usr/local/gcc-10.2.0/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/gcc-10.2.0/lib64:$LD_LIBRARY_PATH
+export PATH="$HOME/.cabal/bin:$PATH"
+export PATH="$HOME/code/scripts:$PATH"
+source "$HOME/.cargo/env"
+export PATH="$HOME/cmake/bin:$PATH"
