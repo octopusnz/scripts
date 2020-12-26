@@ -15,6 +15,11 @@
 # TO-DO: [2]: Review rbv_reg regex
 # TO-DO: [3]: Support for other ruby env managers (RVM)
 # TO-DO: [4]: Go support
+
+# Such bugs. If you remove the .ruby-version file and rely on the rbenv global version it fails.
+# I think you need to parse the version number out of the response which contains other stuff:
+# rbenv: version `3.0.0 (set by /home/jacobd/.rbenv/version)' is not installed (set by RBENV_VERSION environment variable)
+
 # I think we need to use the ruby version in Gemfile if no ruby version found
 
 set -o errexit
@@ -685,6 +690,8 @@ updates(){
     printf "Updating %s\n" "${update_params}"
     export BUNDLE_GEMFILE="${update_params%/}${gem_file}" &&
     export "${r_set_ver}"="${ruby_array["${update_params}"]}" &&
+    echo "WE HERE NOW"
+    echo "${r_set_ver}"
     bundle update;
   done
 

@@ -118,5 +118,6 @@ eval "$(rbenv init -)"
 export PATH="$HOME/.cabal/bin:$PATH"
 export PATH="$HOME/code/scripts:$PATH"
 source "$HOME/.cargo/env"
-export PATH="$HOME/cmake/bin:$PATH"
+# TO-DO: Install cmake somewhere sane and update $PATH
+#export PATH="$HOME/cmake/bin:$PATH"
 alias tmux='tmux -u'
