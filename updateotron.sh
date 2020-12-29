@@ -380,7 +380,7 @@ parse_cabal_version(){
       digit2="${BASH_REMATCH[2]//[^0-9]/}"
       if [[ "${digit1}" -gt 2 ]]; then
         cabal_version=1
-      elif [[ "${digit2}" -gt 1 ]]; then
+      elif [[ "${digit1}" -eq 2 && "${digit2}" -gt 3 ]]; then
         cabal_version=1
       else
         cabal_version=0
