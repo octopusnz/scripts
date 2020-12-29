@@ -690,8 +690,6 @@ updates(){
     printf "Updating %s\n" "${update_params}"
     export BUNDLE_GEMFILE="${update_params%/}${gem_file}" &&
     export "${r_set_ver}"="${ruby_array["${update_params}"]}" &&
-    echo "WE HERE NOW"
-    echo "${r_set_ver}"
     bundle update;
   done
 
