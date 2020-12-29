@@ -364,6 +364,37 @@ parse_response(){
   return 0;
 }
 
+parse_cabal_version(){
+
+  local response
+  local digit1
+  local digit2
+
+  cabal_version=0
+
+  response=$(cabal --version)
+
+  if [[ "${response,,}" =~ ([0-9]+)\.([0-9]+) ]]; then
+    if [[ "${#BASH_REMATCH[@]}" -gt 2 ]]; then
+      digit1="${BASH_REMATCH[1]//[^0-9]/}"
+      digit2="${BASH_REMATCH[2]//[^0-9]/}"
+      if [[ "${digit1}" -gt 2 ]]; then
+        cabal_version=1
+      elif [[ "${digit2}" -gt 1 ]]; then
+        cabal_version=1
+      else
+        cabal_version=0
+      fi
+    else
+      echo "We got a version response from cabal --version but we couldn't parse it"
+    fi
+  else
+    echo "Could not parse cabal version. We will skip cabal updates"
+  fi
+
+}
+
+
 # printf -- stops the printf command from processing the "-" options as params
 
 print_help(){
@@ -725,9 +756,16 @@ updates(){
   elif [[ "${cabal_err}" -ne 0 ]]; then
     logic_error "${cabal_err}" 'cabal_err'
   else
+    parse_cabal_version
     printf "\n"
     printf "Updating Cabal packages.\n"
-    cabal v2-update
+
+    if [[ "${cabal_version}" -eq 0 ]]; then
+      cabal update
+    else
+      cabal new-update
+    fi
+
   fi
 
   # We re-set the ruby version once more in case an earlier update to a ruby
