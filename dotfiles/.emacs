@@ -1,3 +1,13 @@
+;; Initial set up
+(set-default-font "Ubuntu Mono-18")
+(menu-bar-mode 0)
+(tool-bar-mode 0)
+(ido-mode 1)
+
+;; smex (meta-x replacement)
+(global-set-key (kbd "M-x") 'smex)
+(global-set-key (kbd "M-X") 'smex-major-mode-commands)
+
 ;; Fix TLS
 (setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
 
@@ -11,9 +21,16 @@
 ;; Replace tabs with spaces except Makefiles
 (defun untabify-except-makefiles ()
   (unless (derived-mode-p 'makefile-mode)
-    (untabify (point-min) (point-max))))
-
+          (untabify (point-min) (point-max))))
 (add-hook 'before-save-hook 'untabify-except-makefiles)
+
+;; C specific config
+(defun my-c-mode-hook ()
+  (setq c-basic-offset 4
+        c-indent-level 4
+        c-default-style "bsd"))
+(add-hook 'c-mode-common-hook 'my-c-mode-hook)
+(add-hook 'c-mode-common-hook '(lambda () (c-toggle-auto-state 1)))
 
 ;; Packages and Themes
 (require 'package)
@@ -31,7 +48,7 @@
  '(custom-safe-themes
    (quote
     ("5f824cddac6d892099a91c3f612fcf1b09bb6c322923d779216ab2094375c5ee" default)))
- '(package-selected-packages (quote (gruber-darker-theme magit))))
+ '(package-selected-packages (quote (smex gruber-darker-theme magit))))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
