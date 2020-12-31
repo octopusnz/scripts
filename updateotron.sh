@@ -15,12 +15,20 @@
 # TO-DO: [2]: Review rbv_reg regex
 # TO-DO: [3]: Support for other ruby env managers (RVM)
 # TO-DO: [4]: Go support
+# TO-DO: [5]: Review the usage of $? to check exit status of bundle/git commands. Shellcheck not happy about it.
 
-# Such bugs. If you remove the .ruby-version file and rely on the rbenv global version it fails.
-# I think you need to parse the version number out of the response which contains other stuff:
-# rbenv: version `3.0.0 (set by /home/jacobd/.rbenv/version)' is not installed (set by RBENV_VERSION environment variable)
-
-# I think we need to use the ruby version in Gemfile if no ruby version found
+# Common errors to handle:
+#
+# Git:
+#   remote: Repository not found.
+#   fatal: repository '[repo name'] not found
+#
+# Ruby:
+#   rbenv: version `3.0.0 (set by [/path/to/.ruby-version] )' is not installed (set by RBENV_VERSION environment variable)
+#
+#   Warning: the running version of Bundler (2.1.4) is older than the version that created the lockfile (2.2.3). We suggest you to upgrade to
+#   the version that created the lockfile by running `gem install bundler:2.2.3`.
+#   Your Ruby version is 2.5.5, but your Gemfile specified >= 2.6.0
 
 set -o errexit
 set -o nounset
@@ -289,6 +297,46 @@ rb_env_setup(){
   return 0;
 }
 
+parse_ruby_update(){
+
+  local response=""
+  local error_msg=""
+  local error2=""
+  local red=""
+  local std=""
+
+  no_colors=0
+
+  for err_value in "${!err_cmd_list[@]}"; do
+    if [[ "${err_value}" == 'tput' ]]; then
+      no_colors=1
+    fi
+  done
+
+  set +o errexit
+
+
+  if ! response=$(bundle update 2>&1); then
+    error_msg="There was an error attempting to update this Ruby project:"
+    if [[ "${no_colors}" -eq 0 ]]; then
+      red=$(tput setaf 1)
+      std=$(tput sgr0)
+      error2="${red}${error_msg}${std}"
+      printf "%s\n" "${error2}"
+      printf "%s\n" "${response}"
+    else
+      printf "%s\n" "${error_msg}"
+      printf "%s\n" "${response}"
+    fi
+  else
+    printf "%s\n" "${response}"
+  fi
+
+  set -o errexit
+
+  return 0;
+}
+
 parse_response(){
 
   if [[ "${#}" -ne 1 ]]; then
@@ -392,8 +440,9 @@ parse_cabal_version(){
     echo "Could not parse cabal version. We will skip cabal updates"
   fi
 
-}
+  return 0;
 
+}
 
 # printf -- stops the printf command from processing the "-" options as params
 
@@ -721,7 +770,7 @@ updates(){
     printf "Updating %s\n" "${update_params}"
     export BUNDLE_GEMFILE="${update_params%/}${gem_file}" &&
     export "${r_set_ver}"="${ruby_array["${update_params}"]}" &&
-    bundle update;
+    parse_ruby_update;
   done
 
   # Could check these in each update attempt, but we wanted to only do the for
@@ -759,13 +808,11 @@ updates(){
     parse_cabal_version
     printf "\n"
     printf "Updating Cabal packages.\n"
-
     if [[ "${cabal_version}" -eq 0 ]]; then
       cabal update
     else
       cabal new-update
     fi
-
   fi
 
   # We re-set the ruby version once more in case an earlier update to a ruby
