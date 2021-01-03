@@ -15,7 +15,6 @@
 # TO-DO: [2]: Review rbv_reg regex
 # TO-DO: [3]: Support for other ruby env managers (RVM)
 # TO-DO: [4]: Go support
-# TO-DO: [5]: Review the usage of $? to check exit status of bundle/git commands. Shellcheck not happy about it.
 
 # Common errors to handle:
 #
@@ -383,7 +382,7 @@ parse_response(){
   # processing. Can't do this with lookbehind I don't think? So need to split
   # string again ...
 
-    if [[ "${no_colors}" -eq 0 ]]; then
+   elif [[ "${no_colors}" -eq 0 ]]; then
       if [[ "${response}" =~ (\+|\-) ]]; then
         #if [[ "${response}" =~ (?<=|)(\+|\-) ]]; then
         IFS=$'\n'
@@ -411,9 +410,6 @@ parse_response(){
     else
       printf "%s\n" "${response}"
     fi
-  else
-    printf "%s\n" "${response}"
-  fi
 
   unset IFS
   set -o errexit
