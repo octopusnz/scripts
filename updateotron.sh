@@ -385,7 +385,7 @@ parse_response(){
   # processing. Can't do this with lookbehind I don't think? So need to split
   # string again ...
 
-    if [[ "${no_colors}" -eq 0 ]]; then
+   elif [[ "${no_colors}" -eq 0 ]]; then
       if [[ "${response}" =~ (\+|\-) ]]; then
         #if [[ "${response}" =~ (?<=|)(\+|\-) ]]; then
         IFS=$'\n'
@@ -413,9 +413,6 @@ parse_response(){
     else
       printf "%s\n" "${response}"
     fi
-  else
-    printf "%s\n" "${response}"
-  fi
 
   unset IFS
   set -o errexit
@@ -779,6 +776,7 @@ updates(){
 
   for update_params in "${!ruby_array[@]}"; do
     printf "Updating %s\n" "${update_params}"
+    parse_response "${update_params}"
     export BUNDLE_GEMFILE="${update_params%/}${gem_file}" &&
     export "${r_set_ver}"="${ruby_array["${update_params}"]}" &&
     parse_ruby_update;
