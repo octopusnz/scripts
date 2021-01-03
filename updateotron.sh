@@ -15,7 +15,6 @@
 # TO-DO: [2]: Review rbv_reg regex
 # TO-DO: [3]: Support for other ruby env managers (RVM)
 # TO-DO: [4]: Go support
-# TO-DO: [5]: Review the usage of $? to check exit status of bundle/git commands. Shellcheck not happy about it.
 
 # Common errors to handle:
 #
@@ -24,10 +23,13 @@
 #   fatal: repository '[repo name'] not found
 #
 # Ruby:
-#   rbenv: version `3.0.0 (set by [/path/to/.ruby-version] )' is not installed (set by RBENV_VERSION environment variable)
+#   rbenv: version `3.0.0 (set by [/path/to/.ruby-version] )' is not installed
+#   (set by RBENV_VERSION environment variable)
 #
-#   Warning: the running version of Bundler (2.1.4) is older than the version that created the lockfile (2.2.3). We suggest you to upgrade to
-#   the version that created the lockfile by running `gem install bundler:2.2.3`.
+#   Warning: the running version of Bundler (2.1.4) is older than the version that
+#   created the lockfile (2.2.3). We suggest you to upgrade to the version that
+#   created the lockfile by running `gem install bundler:2.2.3`.
+#
 #   Your Ruby version is 2.5.5, but your Gemfile specified >= 2.6.0
 
 set -o errexit

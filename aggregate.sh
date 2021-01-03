@@ -67,6 +67,8 @@ cleanup(){
 
 trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 
+set -x
+
 setup(){
 
   local bash_err
@@ -807,7 +809,11 @@ final_output(){
   set -o nounset
 
   return 0
+
+  set +x
 }
+
+
 
 setup
 get_project_dirs
