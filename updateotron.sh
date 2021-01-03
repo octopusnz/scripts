@@ -773,6 +773,7 @@ updates(){
 
   for update_params in "${!ruby_array[@]}"; do
     printf "Updating %s\n" "${update_params}"
+    parse_response "${update_params}"
     export BUNDLE_GEMFILE="${update_params%/}${gem_file}" &&
     export "${r_set_ver}"="${ruby_array["${update_params}"]}" &&
     parse_ruby_update;
