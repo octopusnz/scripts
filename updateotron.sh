@@ -302,10 +302,12 @@ rb_env_setup(){
 parse_ruby_update(){
 
   local response=""
+  local response2=""
   local error_msg=""
   local error2=""
   local red=""
   local std=""
+  local line=""
 
   no_colors=0
 
@@ -329,11 +331,25 @@ parse_ruby_update(){
       printf "%s\n" "${error_msg}"
       printf "%s\n" "${response}"
     fi
+  elif [[ "${no_colors}" -eq 0 ]]; then
+    IFS=$'\n'
+    green=$(tput setaf 2)
+    std=$(tput sgr0)
+    for line in ${response}; do
+        response2=""
+        if [[ "${line,,}" =~ ^(installing) ]]; then
+          response2="${green}${line}${std}"
+          printf "%s\n" "${response2}"
+        else
+          printf "%s\n" "${line}"
+        fi
+    done
   else
     printf "%s\n" "${response}"
   fi
 
   set -o errexit
+  unset IFS
 
   return 0;
 }
@@ -377,42 +393,44 @@ parse_response(){
     if [[ "${no_colors}" -eq 0 ]]; then
       error2="${red}${error_msg}${std}"
       printf "%s\n" "${error2}"
+      printf "%s\n" "${response}"
     else
       printf "%s\n" "${error_msg}"
+      printf "%s\n" "${response}"
     fi
 
   # TO-DO: Could make the regex only match after the | char to avoid some
   # processing. Can't do this with lookbehind I don't think? So need to split
   # string again ...
 
-   elif [[ "${no_colors}" -eq 0 ]]; then
-      if [[ "${response}" =~ (\+|\-) ]]; then
-        #if [[ "${response}" =~ (?<=|)(\+|\-) ]]; then
-        IFS=$'\n'
-        for line in ${response}; do
-          response1=""
-          response2=""
-          if [[ "${line}" =~ (\|) ]]; then
-            #if [[ "${line}" =~ (?<=|)(\+|\-) ]]; then
-            response1="${line%%\|*}"
-            response2="${line##*\|}"
-            response2="${response2//[\+]/${green}\+${std}}"
-            response2="${response2//[\-]/${red}\-${std}}"
-            printf "%s" "${response1}|"
-            printf "%s\n" "${response2}"
-          elif [[ "${line}" =~ (\(\+\)|\(\-\)) ]]; then
-            response1="${line//[\+]/${green}\+${std}}"
-            response1="${response1//[\-]/${red}\-${std}}"
-            printf "%s\n" "${response1}"
-          else printf "%s\n" "${line}"
-          fi
-        done
-      else
-        printf "%s\n" "${response}"
-      fi
+  elif [[ "${no_colors}" -eq 0 ]]; then
+    if [[ "${response}" =~ (\+|\-) ]]; then
+      #if [[ "${response}" =~ (?<=|)(\+|\-) ]]; then
+      IFS=$'\n'
+      for line in ${response}; do
+        response1=""
+        response2=""
+        if [[ "${line}" =~ (\|) ]]; then
+          #if [[ "${line}" =~ (?<=|)(\+|\-) ]]; then
+          response1="${line%%\|*}"
+          response2="${line##*\|}"
+          response2="${response2//[\+]/${green}\+${std}}"
+          response2="${response2//[\-]/${red}\-${std}}"
+          printf "%s" "${response1}|"
+          printf "%s\n" "${response2}"
+        elif [[ "${line}" =~ (\(\+\)|\(\-\)) ]]; then
+          response1="${line//[\+]/${green}\+${std}}"
+          response1="${response1//[\-]/${red}\-${std}}"
+          printf "%s\n" "${response1}"
+        else printf "%s\n" "${line}"
+        fi
+      done
     else
       printf "%s\n" "${response}"
     fi
+  else
+    printf "%s\n" "${response}"
+  fi
 
   unset IFS
   set -o errexit
