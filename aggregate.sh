@@ -67,8 +67,6 @@ cleanup(){
 
 trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
 
-set -x
-
 setup(){
 
   local bash_err
@@ -126,7 +124,7 @@ cust_get_files() {
     for files in *; do
         if [[ -f "${files}" ]]; then
             if [[ "${files}" =~ ${make_reg} ]]; then
-                full_projects+=(\./"${files}")
+                full_projects+=("${PWD}"/"${files}")
                 success=$((success+1))
                 #This will only find the first one
                 break
@@ -159,6 +157,8 @@ dir_check() {
         cd "${deeper_files}"
         cust_get_files
     done
+
+    project_cleanup
 
     return 0;
 }
@@ -204,12 +204,12 @@ success=0
 
     for files in *; do
         if [[ -f "${files}" ]]; then
-            if [[ "${files}" =~ ${make_reg} ]]; then
-                full_projects+=(\./"${files}")
-                success=$((success+1))
-                #This will only find the first one
-                break
-            fi
+          if [[ "${files}" =~ ${make_reg} ]]; then
+            full_projects+=("${PWD}"/"${files}")
+            success=$((success+1))
+            #This will only find the first one
+            break
+          fi
         fi
     done
 
@@ -809,8 +809,6 @@ final_output(){
   set -o nounset
 
   return 0
-
-  set +x
 }
 
 
