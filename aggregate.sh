@@ -14,9 +14,18 @@
 # TO-DO: [7]: Search through header files for other includes!
 # TO_DO: [8]: Create dual profect functionality i.e search bash script + c
 
+# Handle these errors (maybe ignore symlinks?)
+#
+#/home/jacobd/code/scripts/aggregate.sh: line 110: cd: //bin/X11/X11/X11/X11
+#/X11/X11/X11/X#11/X11/X11/X11/X11/X11/X11/X11/X11/X11/X11/X11/X11/X11/X11
+#/X11/X11/X11/X11/X11/X11/X11/X1#1/X11/X11/X11/X11/X11/X11/X11/X11/X11/X11:
+#Too many levels of symbolic links
+
+
 set -o errexit
 set -o nounset
 set -o pipefail
+set -o physical
 
 # User editable config options. See aggregate.txt for more information.
 
