@@ -33,7 +33,7 @@ lock_file="/aggregate.lock"
 lock_file_dir="/tmp"
 make_reg="makefile"
 file_ext_name="c"
-file_reg="^.*\.(c)$"
+file_reg="^.*\.(c|h)$"
 max_depth=10
 max_depth_count=0
 
@@ -253,14 +253,16 @@ get_files(){
   local such_files
 
   declare -gA my_codes
+  declare -gA my_printing_codes
 
   proj=""
   my_codes=()
-
+  my_printing_codes=()
   # TO-DO: If there are project dirs within dirs we get them all.
 
   for proj in "${all_projects[@]}"; do
     files_array=()
+    files_print_array=()
     files=""
     tmp_array=()
     such_files=""
@@ -281,7 +283,7 @@ get_files(){
 
     if [[ "${such_files}" =~ ${file_reg} ]]; then
       files_array+=("${such_files}")
-
+      files_print_array+=("${such_files##*/}")
     fi
     done
 
@@ -289,6 +291,10 @@ get_files(){
 
     if [[ "${#files_array[@]}" -gt 0 ]]; then
       my_codes+=(["${proj}"]="${files_array[@]}")
+    fi
+
+    if [[ "${#files_print_array[@]}" -gt 0 ]]; then
+      my_printing_codes+=(["${proj}"]="${files_print_array[@]}")
     fi
 
   done
@@ -368,8 +374,6 @@ determine_compilers(){
 
     # TO-DO: Maybe put another check in here that cc is a valid command
     if [[ "${cc_success_counter}" -eq 0 ]]; then
-        printf "Couldn't find a specific compiler in %s\n" "${projects}"
-        printf "We will set cc as default \n"
         projects="${projects%/*}/"
         comp_array+=(["${projects}"]="cc");
     fi
@@ -794,7 +798,7 @@ final_output(){
     printf "%s looks like an interesting project! \n" "${proj}"
     printf "It's using %s as a compiler.\n" "${comp_array[${proj}]}"
     printf "It has these %s files: %s\n" "${file_ext_name}"\
-      "${my_codes[${proj}]}"
+      "${my_printing_codes[${proj}]}"
     printf "Across those files you've written a total of %s lines of code\n"\
         "${line_count[${proj}]}"
     printf "\n"
