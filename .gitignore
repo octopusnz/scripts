@@ -17,7 +17,6 @@
 *.out
 *.sublime-project
 *.sublime-workspace
-
+test*.sh
 /foo/
 /tst/
-
