@@ -34,6 +34,8 @@ lock_file_dir="/tmp"
 make_reg="makefile"
 file_ext_name="c"
 file_reg="^.*\.(c)$"
+max_depth=10
+max_depth_count=0
 
 # Regex used in functions
 
@@ -115,10 +117,16 @@ tmp_charge(){
   set +o nounset
 
   if [[ "${#tmp_array[@]}" -gt 0 ]]; then
-      for deeper_files in "${tmp_array[@]}"; do
-          cd "${deeper_files}"
-          cust_get_files
-      done
+    for deeper_files in "${tmp_array[@]}"; do
+      if [[ $max_depth_count -le $max_depth ]]; then
+        max_depth_count=$((max_depth_count+1))
+        cd "${deeper_files}"
+        cust_get_files
+      else
+        printf "We reached max depth. It's currently set to %s.\n" "${max_depth}"
+        project_cleanup
+      fi
+    done
   fi
 
   set -o nounset
@@ -133,10 +141,10 @@ cust_get_files() {
     for files in *; do
         if [[ -f "${files}" ]]; then
             if [[ "${files}" =~ ${make_reg} ]]; then
-                full_projects+=("${PWD}"/"${files}")
-                success=$((success+1))
-                #This will only find the first one
-                break
+              full_projects+=("${PWD}"/"${files}")
+              success=$((success+1))
+              #This will only find the first one
+              break
             fi
         fi
     done
