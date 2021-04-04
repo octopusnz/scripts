@@ -848,10 +848,30 @@ updates(){
   if [[ "${system_ruby}" -eq 0 ]]; then
     printf "Updating RubyGems.\n"
     printf "Setting default Ruby version: %s\n" "${def_ruby_version}"
+    printf "Attempting RubyGems update on this version:\n"
     export "${r_set_ver}"="${def_ruby_version}" &&
     gem update --system;
   else
-    printf "Skipping RubyGems update\n"
+    if [[ "${#r_env_versions}" -gt 0 ]]; then
+      max_ver=0
+      max_count=0
+      for such_ver in "${r_env_versions[@]}"; do
+        [[ ${such_ver} > ${max_ver} ]] &&
+          max_ver="${such_ver}" &&
+          max_count=$((max_count+1))
+      done
+      if [[ "${max_count}" -gt 0 ]]; then
+        printf "Selecting the highest Ruby version: %s\n" "${max_ver}"
+        printf "Attempting RubyGems update on this version:\n"
+        export "${r_set_ver}"="${max_ver}" &&
+        gem update --system;
+      else
+        printf "Couldn't parse a valid ruby version\n"
+        printf "Skipping RubyGems update\n"
+      fi
+    else
+      printf "Skipping RubyGems update\n"
+    fi
   fi
 
   return 0;

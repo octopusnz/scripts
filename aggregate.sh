@@ -118,14 +118,16 @@ tmp_charge(){
 
   if [[ "${#tmp_array[@]}" -gt 0 ]]; then
     for deeper_files in "${tmp_array[@]}"; do
-      if [[ $max_depth_count -le $max_depth ]]; then
-        max_depth_count=$((max_depth_count+1))
+   #   if [[ $max_depth_count -le $max_depth ]]; then
+   #     max_depth_count=$((max_depth_count+1))
+   #     echo "Looking at ${deeper_files}"
         cd "${deeper_files}"
         cust_get_files
-      else
-        printf "We reached max depth. It's currently set to %s.\n" "${max_depth}"
-        project_cleanup
-      fi
+   #   else
+   #     printf "We reached max depth and stopped parsing this tree. It's currently set to %s.\n" "${max_depth}"
+   #     printf "The tree was: %s.\n" "${deeper_files}"
+   #     project_cleanup
+   #   fi
     done
   fi
 
@@ -154,9 +156,16 @@ cust_get_files() {
     if [[ "${success}" -eq 0 ]]; then
         unset tmp_array
         for dirs in *; do
-            if [[ -d "${dirs}" ]]; then
-                tmp_array+=("${PWD}"/"${dirs}")
+          if [[ -d "${dirs}" ]]; then
+            if [[ $max_depth_count -le $max_depth ]]; then
+              max_depth_count=$((max_depth_count+1))
+              tmp_array+=("${PWD}"/"${dirs}")
+            else
+              printf "We reached max depth and stopped parsing this tree. It's currently set to %s.\n" "${max_depth}"
+              printf "The tree was: %s.\n" "${PWD}"
+              project_cleanup
             fi
+          fi
         done
         tmp_charge
     fi
