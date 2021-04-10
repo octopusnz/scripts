@@ -40,6 +40,7 @@ set -o pipefail
 
 git_dir="${HOME}/sources/compile"
 lock_file_dir="/tmp"
+emacs_file_dir="/tmp"
 rbenv_dir="${HOME}/.rbenv"
 ruby_build_dir="${HOME}/.rbenv/plugins/ruby-build"
 ruby_projects_dir="${HOME}/code/ruby"
@@ -49,10 +50,10 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 gem_file='/Gemfile'
 lock_file='/updateotron.lock'
+emacs_file='/emacs_update.el'
 rbv_file='/.ruby-version'
 git_check='/.git'
 rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
-
 
 cleanup(){
 
@@ -72,6 +73,15 @@ cleanup(){
         printf "[WARNING]: There was an error removing the lock file.\n"
         printf "We tried to remove this file: %s%s\n" "${lock_file_dir%/}" \
          "${lock_file}"
+        printf "We'll continue to attempt to exit.\n"
+      fi
+    fi
+
+    if ! rm "${emacs_file_dir%/}${emacs_file}"; then
+      if [[ "${debug}" == 1 ]]; then
+        printf "[WARNING]: There was an error removing the temporary emacs file.\n"
+        printf "We tried to remove this file: %s%s\n" "${emacs_file_dir%/}" \
+         "${emacs_file}"
         printf "We'll continue to attempt to exit.\n"
       fi
     fi
@@ -537,6 +547,7 @@ startup(){
   all_dir=(
 
     "${git_dir}"
+    "${emacs_file_dir}"
     "${lock_file_dir}"
     "${rbenv_dir}"
     "${ruby_build_dir}"
@@ -554,6 +565,8 @@ startup(){
 
     [bundle]=mandatory
     [cabal]=optional
+    [cat]=mandatory
+    [emacs]=optional
     [gem]=mandatory
     [git]=mandatory
     [rbenv]=mandatory
@@ -724,7 +737,10 @@ ruby_curation(){
     if [[ "${def_ruby_version}" == "system" ]]; then
       system_ruby=1
       printf "System Ruby version has been set as default.\n"
-      printf "We'll skip updating RubyGems to avoid trampling your settings.\n"
+      printf "To avoid trampling your OS and package management\n"
+      printf "we won't update RubyGems on the system Ruby.\n"
+      printf "Instead, we'll check the other installed Ruby versions\n"
+      printf "and update RubyGems on the latest one only.\n"
     fi
   else
     sanitize "${script_dir}" 0
@@ -767,8 +783,11 @@ ruby_curation(){
 updates(){
 
   local cabal_err=0
+  local emacs_err=0
   local err_value
   local git_updates=""
+  local max_ver
+  local max_count
   local rust_err=0
   local update_params=""
 
@@ -793,6 +812,7 @@ updates(){
   done
 
   for update_params in "${!ruby_array[@]}"; do
+    printf "\n"
     printf "Updating %s\n" "${update_params}"
     parse_response "${update_params}"
     export BUNDLE_GEMFILE="${update_params%/}${gem_file}" &&
@@ -810,6 +830,9 @@ updates(){
       rust_err=1
     elif [[ "${err_value}" == 'cabal' ]]; then
       cabal_err=1
+    elif
+      [[ "${err_value}" == 'emacs' ]]; then
+      emacs_err=1
     else
       logic_error "${err_value}" 'err_value'
     fi
@@ -855,12 +878,16 @@ updates(){
     if [[ "${#r_env_versions}" -gt 0 ]]; then
       max_ver=0
       max_count=0
+      # Might be a bit janky here. Need an if rather than the sequential &&?
+      # Also what happens if 'system' is in the r_env_versions array and is the only thing there? Explode?
+      # Use rbv_reg regex maybe?
       for such_ver in "${r_env_versions[@]}"; do
         [[ ${such_ver} > ${max_ver} ]] &&
-          max_ver="${such_ver}" &&
-          max_count=$((max_count+1))
+        max_ver="${such_ver}" &&
+        max_count=$((max_count+1))
       done
       if [[ "${max_count}" -gt 0 ]]; then
+        printf "\n"
         printf "Selecting the highest Ruby version: %s\n" "${max_ver}"
         printf "Attempting RubyGems update on this version:\n"
         export "${r_set_ver}"="${max_ver}" &&
@@ -871,6 +898,54 @@ updates(){
       fi
     else
       printf "Skipping RubyGems update\n"
+    fi
+  fi
+
+  if [[ "${emacs_err}" -eq 1 ]]; then
+    printf "\n"
+    printf "Skipping Emacs package updates.\n"
+  elif [[ "${emacs_err}" -ne 0 ]]; then
+    logic_error "${emacs_err}" 'emacs_err'
+  else
+    printf "\n"
+    printf "Attempting to create temporary emacs elisp file\n"
+    if [[ -f "${emacs_file_dir%/}${emacs_file}" ]]; then
+      printf "It looks like the file already exists!\n"
+      printf "When the script exits it will attempt to remove the file\n"
+      printf "If this keeps happening you might need to manually remove the file:\n"
+      printf "%s%s\n" "${emacs_file_dir%/}" "${emacs_file}"
+      exit 1
+    else
+      # Elisp code used to create a temporary elisp file, launched by emacs in batch mode
+      (
+        cat <<'        EOF'
+
+        ;; Temporary file created by the updateotron.sh script.
+        ;; See https://github.com/octopusnz/scripts for more information
+        ;; This file is used to launch emacs in batch mode and automatically update the package-list
+
+        ;; Fix TLS
+        (setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
+
+        ;; Packages and Themes
+        (require 'package)
+        (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+        ;; Comment/uncomment this line to enable MELPA Stable if desired.  See `package-archive-priorities`
+        ;; and `package-pinned-packages`. Most users will not need or want to do this.
+        ;;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
+        (package-initialize)
+        (package-refresh-contents)
+
+        EOF
+      ) > "${emacs_file_dir}${emacs_file}"
+    fi
+
+    printf "Attempting to update emacs packages\n"
+    if [[ ! -f "${emacs_file_dir%/}${emacs_file}" ]]; then
+      printf "It looks like we couldn't write to the emacs elisp temporary file or its not readable\n"
+      printf "We tried this directory and file:%s%s\n" "${emacs_file_dir}" "${emacs_file}"
+    else
+      emacs --batch -l "${emacs_file_dir}${emacs_file}"
     fi
   fi
 
