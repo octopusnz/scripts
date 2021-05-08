@@ -470,10 +470,10 @@ parse_cabal_version(){
         cabal_version=0
       fi
     else
-      echo "We got a version response from cabal --version but we couldn't parse it"
+      printf "We got a version response from cabal --version but we couldn't parse it\n"
     fi
   else
-    echo "Could not parse cabal version. We will skip cabal updates"
+    printf "Could not parse cabal version. We will skip cabal updates\n"
   fi
 
   return 0;
@@ -612,7 +612,6 @@ startup(){
   # We only expect 0 or 1.
 
   if [[ "${#@}" == 2 ]]; then
-
     if [[ "${1}" =~ ^(-d|--debug|debug)$ ]]; then
       debug=1
       rb_env_setup "${2}"
@@ -621,7 +620,6 @@ startup(){
       printf "See below for usage:\n"
       print_help
     fi
-
   elif [[ "${#@}" -eq 1 ]]; then
     if [[ "${1}" =~ ^(-h|--help|help)$ ]]; then
       print_help
@@ -649,7 +647,6 @@ startup(){
   for cmd_test in "${!command_list[@]}"; do
 
     if ! command -v "${cmd_test}" > /dev/null 2>&1; then
-
       if [[ "${command_list["${cmd_test}"]}" == 'mandatory' ]]; then
         err_cmd_list+=(["${cmd_test}"]="${command_list["${cmd_test}"]}") &&
           err_cmd=1;
@@ -659,7 +656,6 @@ startup(){
       else
         logic_error "${command_list["${cmd_test}"]}" 'command_list[cmd_test]'
       fi
-
     else
       printf "Looks like %s is ready.\n" "${cmd_test}"
     fi
@@ -752,7 +748,6 @@ ruby_curation(){
   for ruby_dir_test in "${ruby_projects_dir[@]}"/*/; do
 
     if [[ -f "${ruby_dir_test%/}${gem_file}" ]]; then
-
       if [[ -f "${ruby_dir_test%/}${rbv_file}" ]]; then
         printf "%s ready\n" "${ruby_dir_test}"
         sanitize "${ruby_dir_test}" 1
@@ -913,10 +908,10 @@ updates(){
       printf "It looks like the file already exists!\n"
       printf "When the script exits it will attempt to remove the file\n"
       printf "If this keeps happening you might need to manually remove the file:\n"
-      printf "%s%s\n" "${emacs_file_dir%/}" "${emacs_file}"
+      printf "%s%s\n" "${emacs_file_dir}" "${emacs_file}"
       exit 1
     else
-      # Elisp code used to create a temporary elisp file, launched by emacs in batch mode
+      # We create a temporary elisp file, launched by emacs in batch mode
       (
         cat <<'        EOF'
 
@@ -935,15 +930,14 @@ updates(){
         ;;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
         (package-initialize)
         (package-refresh-contents)
-
         EOF
       ) > "${emacs_file_dir}${emacs_file}"
     fi
-
     printf "Attempting to update emacs packages\n"
     if [[ ! -f "${emacs_file_dir%/}${emacs_file}" ]]; then
       printf "It looks like we couldn't write to the emacs elisp temporary file or its not readable\n"
       printf "We tried this directory and file:%s%s\n" "${emacs_file_dir}" "${emacs_file}"
+      exit 1
     else
       emacs --batch -l "${emacs_file_dir}${emacs_file}"
     fi
