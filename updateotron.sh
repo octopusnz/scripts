@@ -699,9 +699,12 @@ startup(){
   # This is just in case we have many dirs to check that might chew up resources
   # checking each one with an external application.
 
-  for many_dir in "${git_dir[@]}"/*/; do
+  # https://unix.stackexchange.com/questions/186214/how-to-match-with-hidden-files-inside-a-directory
+
+  for many_dir in "${git_dir[@]}"/{,.[^.],..?}*/; do
 
     if [[ -e "${many_dir%/}${git_check}" ]]; then
+      printf "%s FOUND\n " "${many_dir}"
       git -C "${many_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
       git_array+=("${many_dir}") &&
       printf "%s ready\n" "${many_dir}";
