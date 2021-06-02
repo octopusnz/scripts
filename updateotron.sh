@@ -704,7 +704,6 @@ startup(){
   for many_dir in "${git_dir[@]}"/{,.[^.],..?}*/; do
 
     if [[ -e "${many_dir%/}${git_check}" ]]; then
-      printf "%s FOUND\n " "${many_dir}"
       git -C "${many_dir}" rev-parse --git-dir > /dev/null 2>&1 &&
       git_array+=("${many_dir}") &&
       printf "%s ready\n" "${many_dir}";
