@@ -747,7 +747,7 @@ ruby_curation(){
   printf "\n"
   printf "4. Checking for ruby projects that need a bundle.\n"
 
-  for ruby_dir_test in "${ruby_projects_dir[@]}"/*/; do
+  for ruby_dir_test in "${ruby_projects_dir[@]}"/{,.[^.],..?}*/; do
 
     if [[ -f "${ruby_dir_test%/}${gem_file}" ]]; then
       if [[ -f "${ruby_dir_test%/}${rbv_file}" ]]; then
