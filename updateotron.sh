@@ -876,14 +876,14 @@ updates(){
       max_ver=0
       max_count=0
       # Might be a bit janky here. Need an if rather than the sequential &&?
-      # Also what happens if 'system' is in the r_env_versions array and is the only thing there? Explode?
-      # Use rbv_reg regex maybe?
       for such_ver in "${r_env_versions[@]}"; do
-        [[ ${such_ver} > ${max_ver} ]] &&
-        max_ver="${such_ver}" &&
-        max_count=$((max_count+1))
+        if [[ "${such_ver}" =~ ${rbv_reg} ]]; then
+          [[ ${such_ver} > ${max_ver} ]] &&
+          max_ver="${such_ver}" &&
+          max_count=$((max_count+1))
+        fi
       done
-      if [[ "${max_count}" -gt 0 ]]; then
+      if [[ "${max_count}" -gt 0 ]] && [[ "${max_ver}" =~ ${rbv_reg} ]]; then
         printf "\n"
         printf "Selecting the highest Ruby version: %s\n" "${max_ver}"
         printf "Attempting RubyGems update on this version:\n"
