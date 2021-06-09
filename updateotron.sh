@@ -820,6 +820,8 @@ updates(){
   # Could check these in each update attempt, but we wanted to only do the for
   # loop once. You need to update these with expected values if you add another
   # command to the command list in startup(). We are very explicit right here.
+  # Removed the else that was erroring if the command wasn't in the ones checked for in this function.
+  # Pretty sure we add optional commands in here too. Need to re-think this perhaps.
 
   for err_value in "${!err_cmd_list[@]}"; do
 
@@ -830,8 +832,6 @@ updates(){
     elif
       [[ "${err_value}" == 'emacs' ]]; then
       emacs_err=1
-    else
-      logic_error "${err_value}" 'err_value'
     fi
   done
 
