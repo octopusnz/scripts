@@ -582,7 +582,7 @@ startup(){
   fi
 
   # Create lockfile
-  printf "" >> "${lock_file_dir%/}${lock_file}"
+  printf "" > "${lock_file_dir%/}${lock_file}"
 
   # Check for Bash 4.3+. We set zero if BASH_VERSINFO does not exist due
   # to really old bash versions not providing it by default.
