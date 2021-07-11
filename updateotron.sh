@@ -15,6 +15,16 @@
 # TO-DO: [2]: Review rbv_reg regex
 # TO-DO: [3]: Support for other ruby env managers (RVM)
 # TO-DO: [4]: Go support
+# TO-DO: [5]: Check for all commands required for automake
+# TO-DO: [6]: Trigger valgrind only on changes due to git pull
+# TO-DO: [7]: Add valgrind directories to dir check
+# TO-DO: [8]: Add explanation text/copy for sudo make command in valgrind func
+
+# Style Cleanups:
+# - Check brackets based on C wisdom
+# - Check semi-colons at end of lines
+# - Re-do spacing and get a consistent format
+# - Re-do order of functions (wooo)
 
 # Common errors to handle:
 #
@@ -45,6 +55,9 @@ rbenv_dir="${HOME}/.rbenv"
 ruby_build_dir="${HOME}/.rbenv/plugins/ruby-build"
 ruby_projects_dir="${HOME}/code/ruby"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+val_source_dir="${HOME}/sources/compile/valgrind"
+val_install_dir="/usr/local/valgrind-latest"
+shell_source_dir="${HOME}/sources/compile/shellcheck"
 
 # Variables used throughout
 
@@ -54,6 +67,8 @@ emacs_file='/emacs_update.el'
 rbv_file='/.ruby-version'
 git_check='/.git'
 rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
+val_upgrade=0
+shell_upgrade=0
 
 cleanup(){
 
@@ -708,7 +723,21 @@ startup(){
       git_array+=("${many_dir}") &&
       printf "%s ready\n" "${many_dir}";
     fi
+
+    if [[ "${many_dir}" == "${val_source_dir}" ]] || [[ "${many_dir%/}" == "${val_source_dir}" ]]; then
+      if ! git -C "${many_dir}" diff --quiet remotes/origin/master; then
+        val_upgrade=1
+      fi
+    fi
+
+    if [[ "${many_dir}" == "${shell_source_dir}" ]] || [[ "${many_dir%/}" == "${shell_source_dir}" ]]; then
+      if ! git -C "${many_dir}" diff --quiet remotes/origin/master; then
+        shell_upgrade=1
+      fi
+    fi
   done
+
+
 
   return 0;
 }
@@ -775,6 +804,44 @@ ruby_curation(){
   done
 
   return 0;
+}
+
+shell_checker(){
+
+  printf "\n"
+  printf "Checking if Shellcheck needs an update\n"
+
+  if [[ -d "${shell_source_dir}" ]]; then
+    if [[ "${shell_upgrade}" -eq 1 ]]; then
+      cd "${shell_source_dir}"
+      cabal install --overwrite-policy=always;
+      cd "${script_dir}"
+    else
+      printf "Shellcheck is up-to-date\n"
+    fi
+  fi
+
+}
+
+
+valgrind_checker(){
+
+  printf "\n"
+  printf "Checking if Valgrind needs an update\n"
+
+  if [[ -d "${val_source_dir}" ]] && [[ -d "${val_install_dir}" ]]; then
+    if [[ "${val_upgrade}" -eq 1 ]]; then
+      cd "${val_source_dir}"
+      ./autogen.sh &&
+      ./configure --prefix="${val_install_dir}" &&
+      make &&
+      sudo make install;
+      cd "${script_dir}"
+    else
+      printf "Valgrind is up-to-date\n"
+    fi
+  fi
+
 }
 
 updates(){
@@ -951,4 +1018,6 @@ updates(){
 startup "${@}"
 ruby_curation
 updates
+valgrind_checker
+shell_checker
 exit 0

@@ -32,6 +32,10 @@
 (add-hook 'c-mode-common-hook 'my-c-mode-hook)
 (add-hook 'c-mode-common-hook '(lambda () (c-toggle-auto-state 1)))
 
+;; Shell script specific config
+
+(setq sh-basic-offset 2)
+
 ;; Packages and Themes
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
@@ -48,7 +52,7 @@
  '(custom-safe-themes
    (quote
     ("5f824cddac6d892099a91c3f612fcf1b09bb6c322923d779216ab2094375c5ee" default)))
- '(package-selected-packages (quote (smex gruber-darker-theme magit))))
+ '(package-selected-packages (quote (yasnippet smex gruber-darker-theme magit))))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
