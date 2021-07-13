@@ -737,8 +737,6 @@ startup(){
     fi
   done
 
-
-
   return 0;
 }
 
@@ -819,6 +817,8 @@ shell_checker(){
     else
       printf "Shellcheck is up-to-date\n"
     fi
+  else
+      printf "Shellcheck not found, no updates completed\n"
   fi
 
 }
@@ -840,6 +840,8 @@ valgrind_checker(){
     else
       printf "Valgrind is up-to-date\n"
     fi
+  else
+      printf "Valgrind not found, no updates completed\n"
   fi
 
 }
