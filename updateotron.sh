@@ -725,14 +725,22 @@ startup(){
     fi
 
     if [[ "${many_dir}" == "${val_source_dir}" ]] || [[ "${many_dir%/}" == "${val_source_dir}" ]]; then
-      if ! git -C "${many_dir}" diff --quiet remotes/origin/master; then
-        val_upgrade=1
-      fi
+        cd "${many_dir}"
+        git fetch
+        if $(git rev-parse HEAD) != "$(git rev-parse '@{u}')"; then
+            val_upgrade=1
+        fi
+        cd "${script_dir}"
     fi
 
     if [[ "${many_dir}" == "${shell_source_dir}" ]] || [[ "${many_dir%/}" == "${shell_source_dir}" ]]; then
       if ! git -C "${many_dir}" diff --quiet remotes/origin/master; then
-        shell_upgrade=1
+          cd "${many_dir}"
+        git fetch
+        if $(git rev-parse HEAD) != "$(git rev-parse '@{u}')"; then
+            shell_upgrade=1
+        fi
+        cd "${script_dir}"
       fi
     fi
   done
