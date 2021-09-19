@@ -801,7 +801,7 @@ ruby_curation(){
     for rb_i in "${!ruby_array[@]}"; do
 
       if [[ "${rb_i}" == "${del_target}" ]]; then
-          unset ruby_array["${rb_i}"] &&
+          unset 'ruby_array["${rb_i}"]' &&
           printf "%s removed.\n" "${rb_i}";
       fi
     done
