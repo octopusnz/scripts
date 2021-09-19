@@ -19,6 +19,7 @@
 # TO-DO: [6]: Trigger valgrind only on changes due to git pull
 # TO-DO: [7]: Add valgrind directories to dir check
 # TO-DO: [8]: Add explanation text/copy for sudo make command in valgrind func
+# TO-DO: [9]: Try and make the shellcheck and valgrind git rev-parse's not need to cd into dir
 
 # Style Cleanups:
 # - Check brackets based on C wisdom
