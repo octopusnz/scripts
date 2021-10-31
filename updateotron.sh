@@ -16,10 +16,8 @@
 # TO-DO: [3]: Support for other ruby env managers (RVM)
 # TO-DO: [4]: Go support
 # TO-DO: [5]: Check for all commands required for automake
-# TO-DO: [6]: Trigger valgrind only on changes due to git pull
 # TO-DO: [7]: Add valgrind directories to dir check
 # TO-DO: [8]: Add explanation text/copy for sudo make command in valgrind func
-# TO-DO: [9]: Try and make the shellcheck and valgrind git rev-parse's not need to cd into dir
 
 # Style Cleanups:
 # - Check brackets based on C wisdom
@@ -730,7 +728,6 @@ startup(){
       if [[ $(git -C "${many_dir}" rev-parse HEAD) != "$(git -C "${many_dir}" rev-parse @\{u\})" ]]; then
         val_upgrade=1
       fi
-      cd "${script_dir}"
     fi
 
     if [[ "${many_dir}" == "${shell_source_dir}" ]] || [[ "${many_dir%/}" == "${shell_source_dir}" ]]; then
@@ -738,7 +735,6 @@ startup(){
       if [[ $(git -C "${many_dir}" rev-parse HEAD) != "$(git -C "${many_dir}" rev-parse @\{u\})" ]]; then
         shell_upgrade=1
       fi
-      cd "${script_dir}"
     fi
   done
 
