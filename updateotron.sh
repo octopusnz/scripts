@@ -41,6 +41,12 @@
 #
 #   Your Ruby version is 2.5.5, but your Gemfile specified >= 2.6.0
 
+
+# Bugs:
+#
+# When you invoke with a command line argument i.e -l or -h it runs the clean up and tries to remove lockfiles that
+# aren't there. Should we add/remove a lockfile quickly ? Or just not care.
+
 set -o errexit
 set -o nounset
 set -o pipefail
