@@ -18,6 +18,7 @@
 # TO-DO: [5]: Check for all commands required for automake
 # TO-DO: [7]: Add valgrind directories to dir check
 # TO-DO: [8]: Add explanation text/copy for sudo make command in valgrind func
+# TO-DO: [9]: Re-work latest GCC, check for latest version and set CC.
 
 # Style Cleanups:
 # - Check brackets based on C wisdom
@@ -63,9 +64,12 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 val_source_dir="${HOME}/sources/compile/valgrind"
 val_install_dir="/usr/local/valgrind-latest"
 shell_source_dir="${HOME}/sources/compile/shellcheck"
+gcc_latest_dir="/usr/local/gcc-11.2.0/bin/"
+home_dir="${HOME}"
 
 # Variables used throughout
 
+config_file='/updateotron.config'
 gem_file='/Gemfile'
 lock_file='/updateotron.lock'
 emacs_file='/emacs_update.el'
@@ -74,6 +78,8 @@ git_check='/.git'
 rbv_reg="([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})(-([A-Za-z0-9]{1,10}))?"
 val_upgrade=0
 shell_upgrade=0
+
+# shellcheck disable=SC2317  # Don't warn about unreachable commands in this function
 
 cleanup(){
 
@@ -144,7 +150,6 @@ logic_error(){
 
   exit 9
 
-  return 0;
 }
 
 # This takes an argument (string from variable) and cleans it.
@@ -573,6 +578,7 @@ startup(){
     "${ruby_build_dir}"
     "${ruby_projects_dir}"
     "${script_dir}"
+    "${gcc_latest_dir}"
   )
 
   # When adding commands to this list you can do it in the format of
@@ -659,6 +665,17 @@ startup(){
     printf "We got more command line options than we expected.\n"
     printf "See below for usage:\n"
     print_help
+  fi
+
+  # Let's see if a config file exists
+
+
+  if [[ -f "${home_dir%/}${config_file}" ]]; then
+    printf "[ERROR 3]: CONFIG file exists: %s%s\n" "${home_dir%/}"\
+           "${config_file}";
+  else
+    printf "Let's try and make the CONFIG file\n"
+    printf "" > "${home_dir%/}${config_file}"
   fi
 
   printf "\n"
@@ -953,6 +970,8 @@ updates(){
       max_count=0
       # Might be a bit janky here. Need an if rather than the sequential &&?
       for such_ver in "${r_env_versions[@]}"; do
+        printf "SUCH VER IS: %s\n" "${such_ver}"
+        printf "MAX VER IS: %s\n" "${max_ver}"
         if [[ "${such_ver}" =~ ${rbv_reg} ]]; then
           [[ ${such_ver} > ${max_ver} ]] &&
           max_ver="${such_ver}" &&
