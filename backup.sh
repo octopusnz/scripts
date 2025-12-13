@@ -44,8 +44,7 @@ backup(){
 
   echo "Starting backup process..."
 
-  # Placeholder for actual backup commands
-  # e.g., rsync, tar, etc.
+  # rclone copy /home/ BackBlaze:Debian-Home/home/
 
   echo "Backup process completed."
 
