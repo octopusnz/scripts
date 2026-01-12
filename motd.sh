@@ -63,3 +63,11 @@ individual files in /usr/share/doc/*/copyright.
 
 Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
 permitted by applicable law."
+echo ""
+
+echo -e "${GREEN}TO-DO List: ${RESET}"
+echo -e "${MAGENTA}
+1. Remember to check the cc configuration if/when GCC is updated.
+   sudo update-alternatives --config cc
+2. Check .bashrc for aliases and updates when compiling from source.
+${RESET}"
