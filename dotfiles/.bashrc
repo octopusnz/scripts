@@ -124,5 +124,5 @@ if ! shopt -oq posix; then
   fi
 fi
 . "$HOME/.cargo/env"
-export PATH='/usr/bin:/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/home/jacobd/.cargo/bin:/home/jacobd/code/musings/scripts:/usr/games'
+export PATH="/usr/bin:/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:$HOME/.cargo/bin:$HOME/code/musings/scripts:/usr/games"
 export RCLONE_FAST_LIST=true
