@@ -11,7 +11,7 @@ echo "Checking for conflicts..."
 while IFS= read -r path; do
     newpath=$(echo "$path" | tr -d "'")
     if [[ "$path" != "$newpath" ]]; then
-        if [[ -e "$newpath" && "$path" != "$newpath" ]]; then
+        if [[ -e "$newpath" ]]; then
             echo "CONFLICT: '$path' would become '$newpath' (already exists!)"
             conflicts=1
         fi
