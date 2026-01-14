@@ -6,19 +6,19 @@ TARGET_DIR="${1:-.}"   # default to current directory if not passed
 
 conflicts=0
 
+# Function to transform path by removing quotes
+get_transformed_path() {
+    local path="$1"
+    echo "$path" | tr -d "'"
+}
+
 # Function to check if path transformation is needed
 # Returns 0 if path needs transformation, 1 otherwise
 needs_transformation() {
     local path="$1"
     local newpath
-    newpath=$(echo "$path" | tr -d "'")
+    newpath=$(get_transformed_path "$path")
     [[ "$path" != "$newpath" ]]
-}
-
-# Function to transform path by removing quotes
-get_transformed_path() {
-    local path="$1"
-    echo "$path" | tr -d "'"
 }
 
 # Dry run: check for conflicts first
