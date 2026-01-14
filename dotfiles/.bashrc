@@ -30,10 +30,6 @@ shopt -s checkwinsize
 # make less more friendly for non-text input files, see lesspipe(1)
 #[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 
-# Exports for more power
-export MAKEFLAGS="-j3"
-export CARGO_BUILD_JOBS=3
-
 # set variable identifying the chroot you work in (used in the prompt below)
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
     debian_chroot=$(cat /etc/debian_chroot)
@@ -51,12 +47,12 @@ esac
 
 if [ -n "$force_color_prompt" ]; then
     if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	# We have color support; assume it's compliant with Ecma-48
-	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-	# a case would tend to support setf rather than setaf.)
-	color_prompt=yes
+        # We have color support; assume it's compliant with Ecma-48
+        # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+        # a case would tend to support setf rather than setaf.)
+        color_prompt=yes
     else
-	color_prompt=
+        color_prompt=
     fi
 fi
 
@@ -105,14 +101,6 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-alias btop='/usr/local/bin/btop'
-alias git='/usr/local/bin/git'
-alias gcc='/usr/local/bin/gcc-15.2.0'
-alias clang='/usr/local/bin/clang-21'
-alias valgrind='/usr/local/bin/valgrind'
-export COMPILER_CMD_GCC=/usr/local/bin/gcc-15.2.0
-export COMPILER_CMD_CLANG=/usr/local/bin/clang-21
-
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc).
@@ -123,6 +111,32 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-. "$HOME/.cargo/env"
-export PATH="/usr/bin:/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:$HOME/.cargo/bin:$HOME/code/musings/scripts:/usr/games"
-export RCLONE_FAST_LIST=true
+
+# Custom set up
+export PATH="$HOME/.rbenv/bin:$PATH"
+eval "$(rbenv init -)"
+export PATH="$HOME/.cabal/bin:$PATH"
+export PATH="$HOME/code/scripts:$PATH"
+source "$HOME/.cargo/env"
+# TO-DO: Install cmake somewhere sane and update $PATH
+#export PATH="$HOME/cmake/bin:$PATH"
+
+# Cabal
+#export PATH="$HOME/.cabal/bin:$PATH"
+#
+# Rbenv
+#export PATH="$HOME/.rbenv/bin:$PATH"
+#eval "$(rbenv init -)"
+#
+# Rust
+#export PATH="$HOME/.cargo/bin:$PATH"
+#
+# Go
+export PATH="/usr/local/go/bin:$PATH"
+export PATH="$HOME/go/bin:$PATH"
+
+# GCC 10
+#export PATH=/usr/local/gcc-10.2.0/bin:$PATH
+#export LD_LIBRARY_PATH=/usr/local/gcc-10.2.0/lib64:$LD_LIBRARY_PATH
+#export PATH=/usr/local/clang_11.0.0/bin:$PATH
+#export LD_LIBRARY_PATH=/usr/local/clang_11.0.0/lib:$LD_LIBRARY_PATH
