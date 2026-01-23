@@ -25,8 +25,7 @@ check_required_vars() {
 
 # External commands your backup may need (extend this list as required)
 required_cmds=(
-  # rsync
-  # tar
+  rclone
 )
 
 check_required_cmds() {
@@ -44,7 +43,25 @@ backup(){
 
   echo "Starting backup process..."
 
-  # rclone copy /home/ BackBlaze:Debian-Home/home/
+  rclone sync /home/ BackBlaze:Debian-Home/home/ \
+    --progress \
+    --stats 5s \
+    --stats-one-line \
+    --delete-excluded \
+    --exclude jacobd/sources/compile/ \
+    --exclude jacobd/sources/repos/ \
+    --exclude jacobd/cppcheck-donate-cpu-workfolder/ \
+    --exclude jacobd/.cache/ \
+    --exclude jacobd/.local/share/keyrings/ \
+    --exclude jacobd/.dbus \
+    --exclude jacobd/.Xauthority \
+    --exclude jacobd/.mozilla/ \
+    --exclude jacobd/.cargo/ \
+    --exclude jacobd/.gnupg/ \
+    --exclude jacobd/.ssh/ \
+    --exclude jacobd/.git-credentials \
+    --exclude jacobd/venvs/
+
 
   echo "Backup process completed."
 

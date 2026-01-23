@@ -67,7 +67,13 @@ echo ""
 
 echo -e "${GREEN}TO-DO List: ${RESET}"
 echo -e "${MAGENTA}
-1. Remember to check the cc configuration if/when GCC is updated.
+1. Remember to check the cc and g++ configuration if/when GCC is updated.
+   You should set up sensible defaults for g++ i.e /usr/bin/gcc ?
    sudo update-alternatives --config cc
+   sudo update-alternatives --config g++
 2. Check .bashrc for aliases and updates when compiling from source.
+3. Remember that shared libraries are now in: /usr/local/include/
+   You need to update those libraries when new versions are released.
+4. We need to sort out the BackBlaze backups. Inlcuding automating with a 
+   script and only syncing files we care about.
 ${RESET}"
