@@ -43,11 +43,15 @@ backup(){
 
   echo "Starting backup process..."
 
-  rclone sync /home/ BackBlaze:Debian-Home/home/ \
+  rclone copy /home/ BackBlaze:Debian-Home/home/ \
     --progress \
     --stats 5s \
     --stats-one-line \
-    --delete-excluded \
+    --checksum \
+    --fast-list \
+    --transfers 2 \
+    --buffer-size 16M \
+    --skip-links \
     --exclude jacobd/sources/compile/ \
     --exclude jacobd/sources/repos/ \
     --exclude jacobd/cppcheck-donate-cpu-workfolder/ \
