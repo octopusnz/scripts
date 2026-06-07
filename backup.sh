@@ -43,17 +43,19 @@ backup(){
 
   echo "Starting backup process..."
 
-  rclone copy /home/ BackBlaze:Debian-Home/home/ \
+  nice -n 19 ionice -c3 rclone copy /home/ BackBlaze:Debian-Home/home/ \
     --progress \
     --stats 5s \
     --stats-one-line \
-    --checksum \
     --fast-list \
     --transfers 2 \
-    --buffer-size 16M \
+    --buffer-size 8M \
+    --b2-upload-cutoff 200M \
+    --b2-chunk-size 96M \
     --skip-links \
     --exclude jacobd/sources/compile/ \
     --exclude jacobd/sources/repos/ \
+    --exclude jacobd/sources/libraries \
     --exclude jacobd/cppcheck-donate-cpu-workfolder/ \
     --exclude jacobd/.cache/ \
     --exclude jacobd/.local/share/keyrings/ \

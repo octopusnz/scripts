@@ -26,8 +26,9 @@ echo -e "${YELLOW}${BOLD} -=[ Welcome to debian.theflat.gen.nz]=-   [$(date)] ${
 echo -e "${BLUE}-----------------------------------------------------${RESET}"
 echo -e "${GREEN} • Access is monitored and logged."
 echo -e " • Remember to be excellent to each other."
-echo -e " • Contact dev@theflat.gen.nz if issues arise.${RESET}"
-echo -e "Bash version is: ${BASH_VERSION}" 
+echo -e " • Contact dev@theflat.gen.nz if issues arise."
+echo ""
+echo -e " * Bash version is: ${BASH_VERSION} ${RESET}" 
 echo  ""
 
 echo -e "${MAGENTA}${BOLD} System Information:${RESET}"
