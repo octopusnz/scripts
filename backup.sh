@@ -53,9 +53,7 @@ backup(){
     --b2-upload-cutoff 200M \
     --b2-chunk-size 96M \
     --skip-links \
-    --exclude jacobd/sources/compile/ \
-    --exclude jacobd/sources/repos/ \
-    --exclude jacobd/sources/libraries \
+    --exclude jacobd/sources/ \
     --exclude jacobd/cppcheck-donate-cpu-workfolder/ \
     --exclude jacobd/.cache/ \
     --exclude jacobd/.local/share/keyrings/ \
@@ -66,8 +64,10 @@ backup(){
     --exclude jacobd/.gnupg/ \
     --exclude jacobd/.ssh/ \
     --exclude jacobd/.git-credentials \
-    --exclude jacobd/venvs/
-
+    --exclude jacobd/venvs/ \
+    --exclude jacobd/.rustup/ \
+    --exclude jacobd/.vscode/ \
+    --exclude jacobd/.config/
 
   echo "Backup process completed."
 
