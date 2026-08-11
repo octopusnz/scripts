@@ -4,7 +4,7 @@
 
 TARGET_DIR="${1:-.}"   # default to current directory if not passed
 
-conflicts=0
+conflicts=false
 
 # Dry run: check for conflicts first
 echo "Checking for conflicts..."
@@ -13,12 +13,12 @@ while IFS= read -r path; do
     if [[ "$path" != "$newpath" ]]; then
         if [[ -e "$newpath" ]]; then
             echo "CONFLICT: '$path' would become '$newpath' (already exists!)"
-            conflicts=1
+            conflicts=true
         fi
     fi
 done < <(find "$TARGET_DIR" -depth -name "*'*")
 
-if [[ $conflicts -eq 1 ]]; then
+if [[ $conflicts == true ]]; then
     echo "Conflicts detected! Resolve them before running again."
     exit 1
 fi
