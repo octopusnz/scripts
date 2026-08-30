@@ -5,8 +5,6 @@ set -o nounset
 set -o pipefail
 set -o physical
 
-lock_file="${HOME}/backup.lock"
-
 # Required environment variables
 required_vars=(
   HOME
@@ -26,6 +24,9 @@ check_required_vars() {
 # External commands your backup may need (extend this list as required)
 required_cmds=(
   rclone
+  nice
+  ionice
+  flock
 )
 
 check_required_cmds() {
@@ -38,6 +39,20 @@ check_required_cmds() {
   done
   (( missing == 0 )) || return 1
 }
+
+check_required_vars || exit 1
+check_required_cmds || exit 1
+
+lock_file="${HOME}/backup.lock"
+log_file="${HOME}/backup.log"
+
+# Always log to a file so unattended (cron/systemd) runs leave a record;
+# also mirror to the terminal when run interactively.
+if [[ -t 1 ]]; then
+  exec > >(tee -a "${log_file}") 2>&1
+else
+  exec >> "${log_file}" 2>&1
+fi
 
 backup(){
 
@@ -67,40 +82,29 @@ backup(){
     --exclude jacobd/venvs/ \
     --exclude jacobd/.rustup/ \
     --exclude jacobd/.vscode/ \
-    --exclude jacobd/.config/
+    --exclude jacobd/.config/ \
+    --exclude jacobd/backup.lock \
+    --exclude jacobd/backup.log \
+    --exclude "*.env" \
+    --exclude jacobd/.claude/.credentials.json \
+    --exclude jacobd/.claude/ide/ \
+    --exclude "jacobd/.claude/sessions/*.key"
 
   echo "Backup process completed."
 
   return 0
 }
 
-create_lock_file(){
-  # Attempt atomic-ish lock using noclobber
-  if ( set -o noclobber; : > "${lock_file}" ) 2>/dev/null; then
-    echo "Lock acquired: ${lock_file}"
-  else
-    echo "Another instance is running or lock already exists: ${lock_file}" >&2
-    exit 1
-  fi
-}
-
-cleanup(){
-  local exit_status=$?
-  trap - ERR EXIT SIGHUP SIGINT SIGTERM
-  if [[ -f "${lock_file}" ]]; then
-    if rm -f -- "${lock_file}"; then
-      echo "Lock file removed: ${lock_file}"
-    else
-      echo "Warning: failed to remove lock file: ${lock_file}" >&2
-    fi
-  fi
-  exit "$exit_status"
-}
-
-trap cleanup ERR EXIT SIGHUP SIGINT SIGTERM
-
-create_lock_file
-check_required_vars || exit 1
-check_required_cmds || exit 1
+# Acquire an exclusive, non-blocking lock on file descriptor 9. Unlike a
+# noclobber marker file, this lock is released automatically by the kernel
+# when the process exits for any reason -- including SIGKILL, an OOM-kill,
+# or a crash -- so it can never be left stale. The lock file itself is not
+# removed; it simply persists on disk as the lock target.
+exec 9>"${lock_file}"
+if ! flock -n 9; then
+  echo "Another instance is running or lock already held: ${lock_file}" >&2
+  exit 1
+fi
+echo "Lock acquired: ${lock_file}"
 
 backup
