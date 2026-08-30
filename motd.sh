@@ -26,8 +26,10 @@ echo -e "${YELLOW}${BOLD} -=[ Welcome to debian.theflat.gen.nz]=-   [$(date)] ${
 echo -e "${BLUE}-----------------------------------------------------${RESET}"
 echo -e "${GREEN} • Access is monitored and logged."
 echo -e " • Remember to be excellent to each other."
-echo -e " • Contact dev@theflat.gen.nz if issues arise.${RESET}"
+echo -e " • Contact dev@theflat.gen.nz if issues arise."
 echo ""
+echo -e " * Bash version is: ${BASH_VERSION} ${RESET}" 
+echo  ""
 
 echo -e "${MAGENTA}${BOLD} System Information:${RESET}"
 echo -e "${GREEN} • Hostname:   ${hostname}"
@@ -63,3 +65,17 @@ individual files in /usr/share/doc/*/copyright.
 
 Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
 permitted by applicable law."
+echo ""
+
+echo -e "${GREEN}TO-DO List: ${RESET}"
+echo -e "${MAGENTA}
+1. Remember to check the cc and g++ configuration if/when GCC is updated.
+   You should set up sensible defaults for g++ i.e /usr/bin/gcc ?
+   sudo update-alternatives --config cc
+   sudo update-alternatives --config g++
+2. Check .bashrc for aliases and updates when compiling from source.
+3. Remember that shared libraries are now in: /usr/local/include/
+   You need to update those libraries when new versions are released.
+4. We need to sort out the BackBlaze backups. Inlcuding automating with a 
+   script and only syncing files we care about.
+${RESET}"
