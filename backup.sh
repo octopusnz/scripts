@@ -102,8 +102,10 @@ backup(){
     --exclude jacobd/cppcheck-donate-cpu-workfolder/ \
     --exclude jacobd/.cache/ \
     --exclude jacobd/.local/share/keyrings/ \
-    --exclude jacobd/.dbus \
+    --exclude jacobd/.dbus/ \
     --exclude jacobd/.Xauthority \
+    --exclude jacobd/.ICEauthority \
+    --exclude jacobd/.pki/ \
     --exclude jacobd/.mozilla/ \
     --exclude jacobd/.cargo/ \
     --exclude jacobd/.gnupg/ \
@@ -114,7 +116,12 @@ backup(){
     --exclude jacobd/.vscode/ \
     --exclude jacobd/.config/ \
     --exclude jacobd/backup.lock \
-    --exclude jacobd/backup.log \
+    --exclude "jacobd/backup.log*" \
+    --exclude "jacobd/.vboxclient-*.pid" \
+    --exclude "jacobd/.xsession-errors*" \
+    --exclude jacobd/.sudo_as_admin_successful \
+    --exclude jacobd/.wget-hsts \
+    --exclude "jacobd/.bash_history-*.tmp" \
     --exclude "*.env" \
     --exclude jacobd/.claude/.credentials.json \
     --exclude jacobd/.claude/ide/ \
