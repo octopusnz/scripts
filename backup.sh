@@ -127,7 +127,8 @@ backup(){
     --exclude jacobd/.claude/ide/ \
     --exclude "jacobd/.claude/sessions/*.key" \
     --exclude-if-present CACHEDIR.TAG \
-    --exclude jacobd/code/c/purple/build/
+    --exclude jacobd/code/c/purple/build/ \
+    --exclude jacobd/code/c/purple/fuzz/corpus/
 
   log "Backup process completed."
 
