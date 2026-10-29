@@ -102,6 +102,7 @@ backup(){
     --exclude jacobd/cppcheck-donate-cpu-workfolder/ \
     --exclude jacobd/.cache/ \
     --exclude jacobd/.local/share/keyrings/ \
+    --exclude jacobd/.local/share/Trash/ \
     --exclude jacobd/.dbus/ \
     --exclude jacobd/.Xauthority \
     --exclude jacobd/.ICEauthority \
@@ -126,9 +127,12 @@ backup(){
     --exclude jacobd/.claude/.credentials.json \
     --exclude jacobd/.claude/ide/ \
     --exclude "jacobd/.claude/sessions/*.key" \
+    --exclude jacobd/.claude/skills/synced/ \
+    --exclude jacobd/.claude/plugins/synced/ \
     --exclude-if-present CACHEDIR.TAG \
     --exclude jacobd/code/c/purple/build/ \
-    --exclude jacobd/code/c/purple/fuzz/corpus/
+    --exclude jacobd/code/c/purple/fuzz/corpus/ \
+    --exclude jacobd/code/musings/swn/
 
   log "Backup process completed."
 
